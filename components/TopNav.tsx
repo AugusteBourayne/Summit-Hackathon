@@ -38,11 +38,9 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-40 px-4 py-4 sm:px-6">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-cyan-400 text-[10px] font-bold text-white shadow-sm">
-            F2
-          </span>
-          <span className="hidden sm:inline">Face to Face</span>
+        <Link href="/" className="flex items-center" aria-label="Face to Face — home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Face to Face" className="h-9 w-auto" />
         </Link>
 
         <div className="hidden sm:block">

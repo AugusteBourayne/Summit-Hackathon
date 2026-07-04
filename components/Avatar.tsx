@@ -26,7 +26,7 @@ export function Avatar({
   const photo = photoAvatars[id];
   if (photo) {
     return (
-      <div className={`relative shrink-0 overflow-hidden rounded-full bg-black/5 ${sizes[size]}`}>
+      <div className={`relative shrink-0 overflow-hidden rounded-full ${sizes[size]}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`/avatars/${photo}.png`}
