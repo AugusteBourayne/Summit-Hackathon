@@ -2,7 +2,7 @@
   "claire-dumont": {
     "name": "Claire Dumont",
     "role": "Head of Product",
-    "voiceId": null,
+    "voiceId": "4P2ZOjrTubS9SK0J",
     "trained": true,
     "summary": "Direct, numbers-driven Head of Product. Protects the team's focus and the v2.4 release above everything — says no fast, always explains the reason, and usually offers a concrete alternative.",
     "behaviors": [
@@ -31,8 +31,17 @@
     "personaProfile": ""
   },
   "second-clone-demo": {
-    "name": "Marc Lefevre",
+    "name": "Patrick Nguyen",
     "role": "Engineering Manager",
+    "voiceId": null,
+    "trained": false,
+    "summary": "",
+    "behaviors": [],
+    "personaProfile": ""
+  },
+  "lea-fontaine": {
+    "name": "Léa Fontaine",
+    "role": "Head of Customer Success",
     "voiceId": null,
     "trained": false,
     "summary": "",

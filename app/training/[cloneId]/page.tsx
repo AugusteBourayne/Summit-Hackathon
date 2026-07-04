@@ -6,7 +6,7 @@ import { FileText, MessageCircleQuestion, Mic, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { getClone } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
-import { useRecorder } from "@/lib/useRecorder";
+import { useRecorder, concatWavClipsBase64 } from "@/lib/useRecorder";
 import { Avatar } from "@/components/Avatar";
 import questions from "@/seed/interview_questions.json";
 
@@ -64,6 +64,10 @@ export default function TrainingStudio({
 
   const [voiceId, setVoiceId] = useState<string | null>(clone?.voiceId ?? null);
   const [cloningVoice, setCloningVoice] = useState(false);
+  const [voiceCloneError, setVoiceCloneError] = useState<string | null>(null);
+  // Chaque réponse enregistrée au micro pendant l'interview, gardée pour servir d'échantillon
+  // réel au clonage de voix (au lieu du texte factice qui était envoyé jusqu'ici).
+  const [answerAudios, setAnswerAudios] = useState<string[]>([]);
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
 
@@ -127,16 +131,53 @@ export default function TrainingStudio({
   async function releaseMic() {
     const audio = await recorder.stop();
     if (!audio) return;
+    setAnswerAudios((prev) => [...prev, audio]);
     const { text } = await api.stt({ audio });
     setAnswer(text);
   }
 
+  // Bascule clic pour démarrer / clic pour arrêter — plus fiable qu'un "maintenir enfoncé"
+  // sur trackpad.
+  async function toggleMic() {
+    if (recorder.recording) {
+      await releaseMic();
+    } else {
+      await recorder.start();
+    }
+  }
+
+  // Enregistrement direct pour la voix, sans dépendre de l'interview.
+  async function toggleVoiceSampleMic() {
+    if (recorder.recording) {
+      const audio = await recorder.stop();
+      if (audio) setAnswerAudios((prev) => [...prev, audio]);
+    } else {
+      await recorder.start();
+    }
+  }
+
+  function redoVoice() {
+    setVoiceId(null);
+    setAnswerAudios([]);
+    setVoiceCloneError(null);
+  }
+
   async function createVoice() {
     setCloningVoice(true);
+    setVoiceCloneError(null);
     try {
-      // L'échantillon réel sera l'audio concaténé de l'interview (branché avec la partie d'Auguste).
-      const result = await api.cloneVoice({ audioSample: "interview-sample" });
+      const sample = await concatWavClipsBase64(answerAudios);
+      if (!sample) {
+        setVoiceCloneError("No voice recorded yet — answer at least one interview question by voice first.");
+        return;
+      }
+      const result = await api.cloneVoice({ audioSample: sample });
       setVoiceId(result.voiceId);
+      // Persiste tout de suite dans seed/clones.json — sinon la Room et les autres pages
+      // continuent d'utiliser l'ancien voiceId, puisqu'il n'était gardé qu'en mémoire ici.
+      await api.updateClone(cloneId, { voiceId: result.voiceId });
+    } catch (err) {
+      setVoiceCloneError(err instanceof Error ? err.message : "Voice cloning failed.");
     } finally {
       setCloningVoice(false);
     }
@@ -259,19 +300,17 @@ export default function TrainingStudio({
 
             <div className="mt-3 flex gap-2">
               <button
-                onPointerDown={() => recorder.start()}
-                onPointerUp={releaseMic}
-                onPointerLeave={() => recorder.recording && releaseMic()}
+                onClick={toggleMic}
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all ${
                   recorder.recording ? "scale-110 bg-red-500" : "bg-accent hover:scale-105"
                 } text-white`}
-                title="Hold to answer by voice"
+                title={recorder.recording ? "Click to stop" : "Click to answer by voice"}
               >
                 <Mic className="h-5 w-5" />
               </button>
               <input
                 className="flex-1 rounded-full border border-black/10 bg-surface-2 px-4 py-2.5 text-sm outline-none placeholder:text-muted focus:border-accent/50"
-                placeholder="Hold the mic, or type your answer..."
+                placeholder="Click the mic, or type your answer..."
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submitAnswer(answer)}
@@ -303,26 +342,53 @@ export default function TrainingStudio({
           status={voiceId ? "Ready" : "Not started"}
         />
         <p className="mt-3 text-sm text-muted">
-          Turns your interview recording into a cloned voice, so the clone actually sounds like
-          you in meetings.
+          Record ~10-15s of speech (or use interview answers, if any), then clone the voice —
+          no need to finish the interview first.
         </p>
 
         {voiceId ? (
-          <p className="mt-4 rounded-xl bg-cyan-500/10 p-4 text-sm text-cyan-600">
-            ✓ Voice ready — <span className="font-mono text-xs">{voiceId}</span>
-          </p>
+          <>
+            <p className="mt-4 rounded-xl bg-cyan-500/10 p-4 text-sm text-cyan-600">
+              ✓ Voice ready — <span className="font-mono text-xs">{voiceId}</span>
+            </p>
+            <button
+              onClick={redoVoice}
+              className="mt-3 text-sm text-muted hover:text-foreground"
+            >
+              Re-record voice →
+            </button>
+          </>
         ) : (
           <>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                onClick={toggleVoiceSampleMic}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all ${
+                  recorder.recording ? "scale-110 bg-red-500" : "bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/15"
+                } text-white`}
+                title={recorder.recording ? "Click to stop recording" : "Click to record a voice sample"}
+              >
+                <Mic className="h-5 w-5" />
+              </button>
+              <p className="text-sm text-muted">
+                {recorder.recording
+                  ? "Recording — click again to stop"
+                  : answerAudios.length > 0
+                    ? `${answerAudios.length} clip(s) ready`
+                    : "Nothing recorded yet"}
+              </p>
+            </div>
+
             <button
               onClick={createVoice}
-              disabled={cloningVoice || !interviewDone}
+              disabled={cloningVoice || answerAudios.length === 0}
               className="mt-4 flex items-center gap-2 rounded-full bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-600 hover:bg-cyan-500/15 disabled:opacity-40"
             >
               <Play className="h-3.5 w-3.5" />
               {cloningVoice ? "Creating voice..." : "Start voice creation"}
             </button>
-            {!interviewDone && (
-              <p className="mt-2 text-xs text-muted">Finish the AI interview first.</p>
+            {voiceCloneError && (
+              <p className="mt-2 text-xs text-red-500">{voiceCloneError}</p>
             )}
           </>
         )}

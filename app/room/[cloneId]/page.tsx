@@ -2,13 +2,14 @@
 
 import { use, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mic, Paperclip, Send, X } from "lucide-react";
+import { ArrowLeft, Mic, Paperclip, PhoneCall, PhoneOff, Send, X } from "lucide-react";
 import { api, AskResponse } from "@/lib/api";
 import { getClone } from "@/lib/team";
 import { useRecorder } from "@/lib/useRecorder";
 import { Avatar } from "@/components/Avatar";
 import { GroundedPanel } from "@/components/GroundedPanel";
 import { SlackHint } from "@/components/Slack";
+import { Orb } from "@/components/Orb";
 
 type Attachment = { name: string; content: string };
 type Turn = {
@@ -36,9 +37,19 @@ export default function AskClone({
   const [status, setStatus] = useState<"idle" | "thinking" | "speaking">("idle");
   const [dragOver, setDragOver] = useState(false);
   const [openPanel, setOpenPanel] = useState<number | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Ref à jour en continu (contrairement à l'état capturé dans les closures de send/onended),
+  // pour savoir si on doit relancer l'écoute automatiquement une fois le clone fini de parler.
+  const voiceModeRef = useRef(false);
+
+  function setVoiceModeState(value: boolean) {
+    voiceModeRef.current = value;
+    setVoiceMode(value);
+  }
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
   const firstName = clone.name.split(" ")[0];
@@ -77,6 +88,7 @@ export default function AskClone({
       { role: "user", text: displayText, attachments: attached.map((a) => a.name) },
     ]);
     setStatus("thinking");
+    setVoiceError(null);
     scrollDown();
 
     try {
@@ -88,32 +100,150 @@ export default function AskClone({
       try {
         const { audioUrl } = await api.tts({ text: result.response, voiceId: clone!.voiceId });
         const audio = new Audio(audioUrl);
-        audio.onended = () => setStatus("idle");
+        audio.onended = () => {
+          setStatus("idle");
+          if (voiceModeRef.current) pressMicForCall();
+        };
         audio.onerror = () => setStatus("idle");
         await audio.play();
-      } catch {
+      } catch (err) {
+        // Navigateurs (surtout Safari) : la lecture audio peut être refusée si trop de temps
+        // s'est écoulé depuis le dernier clic (politique autoplay). Le texte reste affiché.
         setStatus("idle");
+        setVoiceError(
+          `Couldn't play the voice reply (${err instanceof Error ? err.message : "unknown error"}). The text response above is still valid.`
+        );
       }
-    } catch {
+    } catch (err) {
       setStatus("idle");
+      setVoiceError(`Couldn't get a response (${err instanceof Error ? err.message : "unknown error"}).`);
     }
   }
 
   async function pressMic() {
     if (status === "thinking") return;
+    setVoiceError(null);
     await recorder.start();
   }
 
-  async function releaseMic() {
+  // Conversation vocale : l'enregistrement s'arrête tout seul dès qu'un silence suit un moment
+  // de parole (analyse locale du niveau micro) — plus besoin de cliquer pour dire "j'ai fini".
+  async function pressMicForCall() {
+    if (status === "thinking") return;
+    setVoiceError(null);
+    await recorder.start(() => releaseMicAndSend());
+  }
+
+  // Chat normal : la voix ne fait que remplir la barre de texte — l'utilisateur relit,
+  // corrige si besoin, et envoie lui-même en cliquant sur Send.
+  async function releaseMicToInput() {
     const audio = await recorder.stop();
     if (!audio) return;
-    setStatus("thinking");
     try {
       const { text } = await api.stt({ audio });
-      await send(text);
+      setInput(text);
     } catch {
-      setStatus("idle");
+      // rien à faire, le champ reste tel quel
     }
+  }
+
+  // Conversation vocale continue : pas d'étape de relecture, ça part directement.
+  async function releaseMicAndSend() {
+    const audio = await recorder.stop();
+    if (!audio) {
+      setVoiceError("No audio captured — hold the recording a bit longer next time.");
+      return;
+    }
+    try {
+      const { text } = await api.stt({ audio });
+      if (!text.trim()) {
+        setVoiceError("Didn't catch any speech in that recording — try again.");
+        return;
+      }
+      await send(text);
+    } catch (err) {
+      setStatus("idle");
+      setVoiceError(`Transcription failed (${err instanceof Error ? err.message : "unknown error"}).`);
+    }
+  }
+
+  // Bascule clic pour démarrer / clic pour arrêter — plus fiable qu'un "maintenir enfoncé"
+  // sur trackpad, où un clic précis de plusieurs secondes est difficile à tenir.
+  async function toggleMic() {
+    if (recorder.recording) {
+      await releaseMicToInput();
+    } else {
+      await pressMic();
+    }
+  }
+
+  async function toggleVoiceMic() {
+    if (recorder.recording) {
+      await releaseMicAndSend();
+    } else {
+      await pressMicForCall();
+    }
+  }
+
+  // Mode "conversation vocale" : écran dédié avec l'orbe, écoute relancée automatiquement
+  // après chaque réponse — distinct du chat normal, où la voix reste un message ponctuel.
+  function toggleVoiceMode() {
+    if (voiceMode) {
+      setVoiceModeState(false);
+      if (recorder.recording) recorder.stop();
+    } else {
+      setVoiceModeState(true);
+      pressMicForCall();
+    }
+  }
+
+  // L'orbe donne un retour visuel continu pendant les temps morts (enregistrement, latence
+  // du LLM) — sans lui, rien ne montre que quelque chose se passe pendant ces quelques secondes.
+  const orbState = recorder.recording ? "listening" : status === "idle" ? "idle" : status;
+
+  if (voiceMode) {
+    return (
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-6 py-6">
+        <Avatar id={cloneId} name={clone.name} size="xl" />
+        <h1 className="text-lg font-medium">{firstName}</h1>
+        <button onClick={toggleVoiceMic} title={recorder.recording ? "Click to stop now" : "Click to talk"}>
+          <Orb state={orbState} />
+        </button>
+        <p className="text-xs text-muted">
+          {recorder.recording
+            ? "Listening — stops automatically once you go quiet (or click to stop now)"
+            : status === "thinking"
+              ? "Thinking…"
+              : status === "speaking"
+                ? "Speaking…"
+                : "Click the orb to talk"}
+        </p>
+
+        {voiceError && (
+          <p className="max-w-sm text-center text-xs text-red-500">{voiceError}</p>
+        )}
+
+        {turns.length > 0 && (
+          <div className="max-h-40 w-full space-y-2 overflow-y-auto px-4 text-center">
+            {turns.slice(-2).map((turn, i) => (
+              <p
+                key={i}
+                className={turn.role === "user" ? "text-sm text-muted" : "text-base font-medium"}
+              >
+                {turn.text}
+              </p>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={toggleVoiceMode}
+          className="flex items-center gap-2 rounded-full bg-red-500 px-6 py-3 text-sm font-medium text-white hover:opacity-90"
+        >
+          <PhoneOff className="h-4 w-4" /> End conversation
+        </button>
+      </main>
+    );
   }
 
   return (
@@ -131,16 +261,6 @@ export default function AskClone({
               {clone.role} · talk or type — {firstName}&apos;s answers are grounded in real documents
             </p>
           </div>
-          {status !== "idle" && (
-            <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs text-accent">
-              {status === "thinking" ? "thinking" : "speaking"}
-              <span className="flex gap-0.5">
-                <span className="dot h-1 w-1 rounded-full bg-accent" />
-                <span className="dot h-1 w-1 rounded-full bg-accent" />
-                <span className="dot h-1 w-1 rounded-full bg-accent" />
-              </span>
-            </span>
-          )}
         </div>
 
         {/* Transcript (zone de drop) */}
@@ -254,22 +374,28 @@ export default function AskClone({
 
             <input
               className="min-w-0 flex-1 rounded-full border border-black/10 bg-surface px-5 py-3 text-sm outline-none placeholder:text-muted focus:border-accent/50"
-              placeholder={`Message ${firstName}, or hold the mic to talk...`}
+              placeholder={`Message ${firstName}, or click the mic to talk...`}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send(input)}
             />
 
             <button
-              onPointerDown={pressMic}
-              onPointerUp={releaseMic}
-              onPointerLeave={() => recorder.recording && releaseMic()}
-              title="Hold to talk"
+              onClick={toggleMic}
+              title={recorder.recording ? "Click to stop" : "Click to talk"}
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all ${
                 recorder.recording ? "scale-110 bg-red-500 text-white" : "border border-black/10 text-muted hover:text-foreground"
               }`}
             >
               <Mic className="h-5 w-5" />
+            </button>
+
+            <button
+              onClick={toggleVoiceMode}
+              title="Start a voice conversation"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/10 text-muted hover:text-foreground"
+            >
+              <PhoneCall className="h-5 w-5" />
             </button>
 
             <button

@@ -5,10 +5,9 @@ import Link from "next/link";
 import { MessageSquare } from "lucide-react";
 import { getClone, team } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
-import { Avatar } from "@/components/Avatar";
-import { Badge } from "@/components/Badge";
 import { SlackHint } from "@/components/Slack";
 import { BehaviorProfile } from "@/components/BehaviorProfile";
+import { ProfileHeader } from "@/components/ProfileHeader";
 
 export default function CloneProfile({
   params,
@@ -25,24 +24,12 @@ export default function CloneProfile({
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-      <Link href="/" className="text-sm text-muted hover:text-foreground">
-        ← Back to team
-      </Link>
-
-      <div className="mt-6 flex items-center gap-6">
-        <Avatar id={cloneId} name={clone.name} size="xl" />
-        <div>
-          <h1 className="text-2xl font-semibold">{clone.name}</h1>
-          <p className="text-muted">{clone.role} · {team.company.name}</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <Badge variant={clone.trained ? "trained" : "untrained"}>
-              {clone.trained ? "● trained" : "○ not trained"}
-            </Badge>
-            <Badge variant="consent">✓ consent given</Badge>
-            {clone.voiceId && <Badge variant="voice">voice ready</Badge>}
-          </div>
-        </div>
-      </div>
+      <ProfileHeader
+        cloneId={cloneId}
+        clone={clone}
+        isSelf={isSelf}
+        companyName={team.company.name}
+      />
 
       <section className="mt-10">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
@@ -100,13 +87,6 @@ export default function CloneProfile({
               initialBehaviors={clone.behaviors ?? []}
             />
           </div>
-          {isSelf && (
-            <div className="border-t border-black/5 pt-4">
-              <Link href={`/training/${cloneId}`} className="text-accent hover:underline">
-                Add documents or run an interview →
-              </Link>
-            </div>
-          )}
         </div>
       </section>
 
