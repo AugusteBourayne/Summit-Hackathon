@@ -1,56 +1,137 @@
-import Link from "next/link";
-import clones from "@/seed/clones.json";
+"use client";
 
-export default function Home() {
-  const entries = Object.entries(clones as Record<
-    string,
-    { name: string; role: string; trained: boolean }
-  >);
+import { useState } from "react";
+import Link from "next/link";
+import { ChevronDown } from "lucide-react";
+import { team, clones, floatParams, Member } from "@/lib/team";
+import { useCurrentUser } from "@/lib/currentUser";
+import { Avatar } from "@/components/Avatar";
+import { CloneModal } from "@/components/CloneModal";
+
+const PRIMARY_IDS = ["claire-dumont", "employe-demo", "second-clone-demo"];
+
+function Bubble({
+  member,
+  currentUserId,
+  onOpen,
+}: {
+  member: Member;
+  currentUserId: string;
+  onOpen: (id: string) => void;
+}) {
+  const clone = clones[member.id];
+  if (!clone) return null;
+  const fp = floatParams(member.id);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-3xl font-semibold">Face to Face</h1>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-        Rehearse the conversation before it happens.
-      </p>
+    <div className="group flex w-24 flex-col items-center">
+      <button
+        onClick={() => onOpen(member.id)}
+        className="float-bubble relative flex flex-col items-center"
+        style={
+          {
+            "--float-duration": `${fp.duration}s`,
+            "--float-delay": `${fp.delay}s`,
+            "--float-y": `${-fp.y}px`,
+          } as React.CSSProperties
+        }
+      >
+        <div
+          className={`bubble-nudge rounded-full ring-2 ring-offset-4 ring-offset-background ${
+            clone.trained ? "ring-accent/40" : "ring-transparent"
+          }`}
+        >
+          <Avatar id={member.id} name={member.name} size="xl" />
+        </div>
+        <p className="mt-3 text-sm font-medium">{member.name}</p>
+        <p className="text-xs text-muted">{member.role.split(" ")[0]}</p>
+      </button>
 
-      <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {entries.map(([id, clone]) => (
-          <div
-            key={id}
-            className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800"
+      <div className="mt-2 flex h-7 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {clone.trained ? (
+          <Link
+            href={`/room/${member.id}`}
+            className="rounded-full bg-accent-soft px-3 py-1 text-[11px] font-medium text-accent hover:bg-accent/20"
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium">{clone.name}</h2>
-              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-900">
-                {clone.trained ? "trained" : "not trained"}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{clone.role}</p>
-            <span className="mt-2 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-100">
-              created with consent
-            </span>
-            <div className="mt-4 flex gap-3">
-              <Link
-                href={`/training/${id}`}
-                className="rounded-full border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
-              >
-                Train
-              </Link>
-              <Link
-                href={`/room/${id}`}
-                className="rounded-full bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-50 dark:text-zinc-900"
-              >
-                Talk to clone
-              </Link>
-            </div>
-          </div>
+            Ask {member.name.split(" ")[0]} →
+          </Link>
+        ) : member.id === currentUserId ? (
+          <Link href={`/training/${member.id}`} className="text-[11px] text-accent">
+            Train me →
+          </Link>
+        ) : (
+          <span className="text-[11px] text-muted">Not trained</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  const { currentUserId } = useCurrentUser();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [showMore, setShowMore] = useState(false);
+  const trainedCount = team.members.filter((m) => clones[m.id]?.trained).length;
+
+  const primary = PRIMARY_IDS.map((id) => team.members.find((m) => m.id === id)).filter(
+    (m): m is Member => !!m,
+  );
+  const rest = team.members.filter((m) => !PRIMARY_IDS.includes(m.id));
+
+  return (
+    <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-14">
+      <div className="mx-auto max-w-xl text-center">
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
+          Talk to your{" "}
+          <span className="relative inline-block whitespace-nowrap">
+            <span className="relative z-10">teammates&apos;</span>
+            <span className="absolute inset-x-0 bottom-1 -z-0 h-[0.32em] -rotate-1 rounded-sm bg-gradient-to-r from-violet-300 via-fuchsia-300 to-cyan-300" />
+          </span>{" "}
+          clones
+        </h1>
+        <p className="mt-4 text-muted">
+          Get their honest reaction before you have the real conversation.
+        </p>
+      </div>
+
+      <div className="mt-16 flex flex-wrap justify-center gap-x-8 gap-y-10">
+        {primary.map((member) => (
+          <Bubble key={member.id} member={member} currentUserId={currentUserId} onOpen={setOpenId} />
         ))}
       </div>
 
-      <Link href="/team" className="mt-10 inline-block text-sm underline">
-        Team settings
-      </Link>
+      {rest.length > 0 && (
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={() => setShowMore((v) => !v)}
+            className="flex flex-col items-center gap-1 text-xs text-muted hover:text-foreground"
+          >
+            More teammates
+            <ChevronDown className={`h-4 w-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+      )}
+
+      {showMore && (
+        <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-10">
+          {rest.map((member) => (
+            <Bubble key={member.id} member={member} currentUserId={currentUserId} onOpen={setOpenId} />
+          ))}
+        </div>
+      )}
+
+      {openId && clones[openId] && (
+        <CloneModal
+          cloneId={openId}
+          clone={clones[openId]}
+          isSelf={openId === currentUserId}
+          onClose={() => setOpenId(null)}
+        />
+      )}
+
+      <p className="mt-16 text-center text-xs text-muted/70">
+        {trainedCount} of {team.members.length} clones trained
+      </p>
     </main>
   );
 }
