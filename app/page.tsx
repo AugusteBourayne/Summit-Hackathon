@@ -2,16 +2,90 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mic, Hash } from "lucide-react";
-import { team, clones, floatParams } from "@/lib/team";
+import { Mic, Hash, ChevronDown } from "lucide-react";
+import { team, clones, floatParams, Member } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
 import { CloneModal } from "@/components/CloneModal";
 
+const PRIMARY_IDS = ["elena", "raphael", "geraud"];
+
+function Bubble({
+  member,
+  currentUserId,
+  onOpen,
+}: {
+  member: Member;
+  currentUserId: string;
+  onOpen: (id: string) => void;
+}) {
+  const clone = clones[member.id];
+  if (!clone) return null;
+  const fp = floatParams(member.id);
+
+  return (
+    <div className="group flex w-24 flex-col items-center">
+      <button
+        onClick={() => onOpen(member.id)}
+        className="float-bubble relative flex flex-col items-center"
+        style={
+          {
+            "--float-duration": `${fp.duration}s`,
+            "--float-delay": `${fp.delay}s`,
+            "--float-y": `${-fp.y}px`,
+          } as React.CSSProperties
+        }
+      >
+        <div
+          className={`bubble-nudge rounded-full ring-2 ring-offset-4 ring-offset-background ${
+            clone.trained ? "ring-accent/40" : "ring-transparent"
+          }`}
+        >
+          <Avatar id={member.id} name={member.name} size="xl" />
+        </div>
+        <p className="mt-3 text-sm font-medium">{member.name}</p>
+        <p className="text-xs text-muted">{member.role.split(" ")[0]}</p>
+      </button>
+
+      <div className="mt-2 flex h-7 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {clone.trained ? (
+          <>
+            <Link
+              href={`/room/${member.id}`}
+              title="Meeting"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent"
+            >
+              <Mic className="h-3 w-3" />
+            </Link>
+            <span
+              title="Slack — coming soon"
+              className="flex h-6 w-6 cursor-not-allowed items-center justify-center rounded-full bg-black/[0.04] text-muted/50"
+            >
+              <Hash className="h-3 w-3" />
+            </span>
+          </>
+        ) : member.id === currentUserId ? (
+          <Link href={`/training/${member.id}`} className="text-[11px] text-accent">
+            Train me →
+          </Link>
+        ) : (
+          <span className="text-[11px] text-muted">Not trained</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { currentUserId } = useCurrentUser();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [showMore, setShowMore] = useState(false);
   const trainedCount = team.members.filter((m) => clones[m.id]?.trained).length;
+
+  const primary = PRIMARY_IDS.map((id) => team.members.find((m) => m.id === id)).filter(
+    (m): m is Member => !!m,
+  );
+  const rest = team.members.filter((m) => !PRIMARY_IDS.includes(m.id));
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-14">
@@ -30,64 +104,28 @@ export default function Home() {
       </div>
 
       <div className="mt-16 flex flex-wrap justify-center gap-x-8 gap-y-10">
-        {team.members.map((member) => {
-          const clone = clones[member.id];
-          if (!clone) return null;
-          const fp = floatParams(member.id);
-
-          return (
-            <div key={member.id} className="group flex w-24 flex-col items-center">
-              <button
-                onClick={() => setOpenId(member.id)}
-                className="float-bubble relative flex flex-col items-center"
-                style={
-                  {
-                    "--float-duration": `${fp.duration}s`,
-                    "--float-delay": `${fp.delay}s`,
-                    "--float-y": `${-fp.y}px`,
-                  } as React.CSSProperties
-                }
-              >
-                <div
-                  className={`bubble-nudge rounded-full ring-2 ring-offset-4 ring-offset-background ${
-                    clone.trained ? "ring-accent/40" : "ring-transparent"
-                  }`}
-                >
-                  <Avatar id={member.id} name={member.name} size="xl" />
-                </div>
-                <p className="mt-3 text-sm font-medium">{member.name}</p>
-                <p className="text-xs text-muted">{member.role.split(" ")[0]}</p>
-              </button>
-
-              <div className="mt-2 flex h-7 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                {clone.trained ? (
-                  <>
-                    <Link
-                      href={`/room/${member.id}`}
-                      title="Meeting"
-                      className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent"
-                    >
-                      <Mic className="h-3 w-3" />
-                    </Link>
-                    <span
-                      title="Slack — coming soon"
-                      className="flex h-6 w-6 cursor-not-allowed items-center justify-center rounded-full bg-black/[0.04] text-muted/50"
-                    >
-                      <Hash className="h-3 w-3" />
-                    </span>
-                  </>
-                ) : member.id === currentUserId ? (
-                  <Link href={`/training/${member.id}`} className="text-[11px] text-accent">
-                    Train me →
-                  </Link>
-                ) : (
-                  <span className="text-[11px] text-muted">Not trained</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {primary.map((member) => (
+          <Bubble key={member.id} member={member} currentUserId={currentUserId} onOpen={setOpenId} />
+        ))}
       </div>
+
+      <div className="mt-8 flex justify-center">
+        <button
+          onClick={() => setShowMore((v) => !v)}
+          className="flex flex-col items-center gap-1 text-xs text-muted hover:text-foreground"
+        >
+          More teammates
+          <ChevronDown className={`h-4 w-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+
+      {showMore && (
+        <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-10">
+          {rest.map((member) => (
+            <Bubble key={member.id} member={member} currentUserId={currentUserId} onOpen={setOpenId} />
+          ))}
+        </div>
+      )}
 
       {openId && clones[openId] && (
         <CloneModal
