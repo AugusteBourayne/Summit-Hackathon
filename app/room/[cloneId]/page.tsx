@@ -9,6 +9,7 @@ import { useRecorder } from "@/lib/useRecorder";
 import { Avatar } from "@/components/Avatar";
 import { GroundedPanel } from "@/components/GroundedPanel";
 import { SlackHint } from "@/components/Slack";
+import { Orb } from "@/components/Orb";
 
 type Attachment = { name: string; content: string };
 type Turn = {
@@ -125,6 +126,10 @@ export default function AskClone({
     }
   }
 
+  // L'orbe donne un retour visuel continu pendant les temps morts (enregistrement, latence
+  // du LLM) — sans lui, rien ne montre que quelque chose se passe pendant ces quelques secondes.
+  const orbState = recorder.recording ? "listening" : status === "idle" ? "idle" : status;
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 gap-6 px-6 py-6">
       {/* Colonne conversation */}
@@ -140,16 +145,10 @@ export default function AskClone({
               {clone.role} · talk or type — {firstName}&apos;s answers are grounded in real documents
             </p>
           </div>
-          {status !== "idle" && (
-            <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs text-accent">
-              {status === "thinking" ? "thinking" : "speaking"}
-              <span className="flex gap-0.5">
-                <span className="dot h-1 w-1 rounded-full bg-accent" />
-                <span className="dot h-1 w-1 rounded-full bg-accent" />
-                <span className="dot h-1 w-1 rounded-full bg-accent" />
-              </span>
-            </span>
-          )}
+        </div>
+
+        <div className="flex justify-center py-3">
+          <Orb state={orbState} />
         </div>
 
         {/* Transcript (zone de drop) */}
