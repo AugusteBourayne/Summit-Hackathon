@@ -107,7 +107,6 @@ export default function AskClone({
   async function releaseMic() {
     const audio = await recorder.stop();
     if (!audio) return;
-    setStatus("thinking");
     try {
       const { text } = await api.stt({ audio });
       await send(text);
