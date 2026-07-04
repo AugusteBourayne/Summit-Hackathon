@@ -2,7 +2,7 @@
 
 import { use, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mic, Paperclip, Send, X } from "lucide-react";
+import { ArrowLeft, Mic, Paperclip, PhoneCall, PhoneOff, Send, X } from "lucide-react";
 import { api, AskResponse } from "@/lib/api";
 import { getClone } from "@/lib/team";
 import { useRecorder } from "@/lib/useRecorder";
@@ -37,9 +37,18 @@ export default function AskClone({
   const [status, setStatus] = useState<"idle" | "thinking" | "speaking">("idle");
   const [dragOver, setDragOver] = useState(false);
   const [openPanel, setOpenPanel] = useState<number | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Ref à jour en continu (contrairement à l'état capturé dans les closures de send/onended),
+  // pour savoir si on doit relancer l'écoute automatiquement une fois le clone fini de parler.
+  const voiceModeRef = useRef(false);
+
+  function setVoiceModeState(value: boolean) {
+    voiceModeRef.current = value;
+    setVoiceMode(value);
+  }
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
   const firstName = clone.name.split(" ")[0];
@@ -89,7 +98,10 @@ export default function AskClone({
       try {
         const { audioUrl } = await api.tts({ text: result.response, voiceId: clone!.voiceId });
         const audio = new Audio(audioUrl);
-        audio.onended = () => setStatus("idle");
+        audio.onended = () => {
+          setStatus("idle");
+          if (voiceModeRef.current) pressMic();
+        };
         audio.onerror = () => setStatus("idle");
         await audio.play();
       } catch {
@@ -126,9 +138,37 @@ export default function AskClone({
     }
   }
 
+  // Mode "conversation vocale" : écran dédié avec l'orbe, écoute relancée automatiquement
+  // après chaque réponse — distinct du chat normal, où la voix reste un message ponctuel.
+  function toggleVoiceMode() {
+    if (voiceMode) {
+      setVoiceModeState(false);
+      if (recorder.recording) recorder.stop();
+    } else {
+      setVoiceModeState(true);
+      pressMic();
+    }
+  }
+
   // L'orbe donne un retour visuel continu pendant les temps morts (enregistrement, latence
   // du LLM) — sans lui, rien ne montre que quelque chose se passe pendant ces quelques secondes.
   const orbState = recorder.recording ? "listening" : status === "idle" ? "idle" : status;
+
+  if (voiceMode) {
+    return (
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-6 py-6">
+        <Avatar id={cloneId} name={clone.name} size="xl" />
+        <h1 className="text-lg font-medium">{firstName}</h1>
+        <Orb state={orbState} />
+        <button
+          onClick={toggleVoiceMode}
+          className="flex items-center gap-2 rounded-full bg-red-500 px-6 py-3 text-sm font-medium text-white hover:opacity-90"
+        >
+          <PhoneOff className="h-4 w-4" /> End conversation
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 gap-6 px-6 py-6">
@@ -145,10 +185,6 @@ export default function AskClone({
               {clone.role} · talk or type — {firstName}&apos;s answers are grounded in real documents
             </p>
           </div>
-        </div>
-
-        <div className="flex justify-center py-3">
-          <Orb state={orbState} />
         </div>
 
         {/* Transcript (zone de drop) */}
@@ -276,6 +312,14 @@ export default function AskClone({
               }`}
             >
               <Mic className="h-5 w-5" />
+            </button>
+
+            <button
+              onClick={toggleVoiceMode}
+              title="Start a voice conversation"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/10 text-muted hover:text-foreground"
+            >
+              <PhoneCall className="h-5 w-5" />
             </button>
 
             <button
