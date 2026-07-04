@@ -159,7 +159,16 @@ export default function AskClone({
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-6 py-6">
         <Avatar id={cloneId} name={clone.name} size="xl" />
         <h1 className="text-lg font-medium">{firstName}</h1>
-        <Orb state={orbState} />
+        <button onClick={toggleMic} title={recorder.recording ? "Click to stop and send" : "Click to talk"}>
+          <Orb state={orbState} />
+        </button>
+        <p className="text-xs text-muted">
+          {recorder.recording
+            ? "Listening — click the orb when you're done talking"
+            : status === "idle"
+              ? "Click the orb to talk"
+              : null}
+        </p>
         <button
           onClick={toggleVoiceMode}
           className="flex items-center gap-2 rounded-full bg-red-500 px-6 py-3 text-sm font-medium text-white hover:opacity-90"
