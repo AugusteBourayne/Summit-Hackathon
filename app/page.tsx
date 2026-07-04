@@ -1,56 +1,100 @@
 import Link from "next/link";
-import clones from "@/seed/clones.json";
+import { team, clones } from "@/lib/team";
+import { Avatar } from "@/components/Avatar";
+import { Badge } from "@/components/Badge";
+
+function ActionIcon({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
+    </svg>
+  );
+}
+
+const icons = {
+  chat: "M8 10h8m-8 4h5m-9 6l2.5-3H18a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11z",
+  meeting: "M12 18v3m-3 0h6M12 15a4 4 0 004-4V7a4 4 0 10-8 0v4a4 4 0 004 4z",
+  slack: "M12 8v8m-4-4h8M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+};
 
 export default function Home() {
-  const entries = Object.entries(clones as Record<
-    string,
-    { name: string; role: string; trained: boolean }
-  >);
-
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-3xl font-semibold">Face to Face</h1>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-        Rehearse the conversation before it happens.
-      </p>
-
-      <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {entries.map(([id, clone]) => (
-          <div
-            key={id}
-            className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium">{clone.name}</h2>
-              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-900">
-                {clone.trained ? "trained" : "not trained"}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{clone.role}</p>
-            <span className="mt-2 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800 dark:bg-green-900 dark:text-green-100">
-              created with consent
-            </span>
-            <div className="mt-4 flex gap-3">
-              <Link
-                href={`/training/${id}`}
-                className="rounded-full border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
-              >
-                Train
-              </Link>
-              <Link
-                href={`/room/${id}`}
-                className="rounded-full bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-50 dark:text-zinc-900"
-              >
-                Talk to clone
-              </Link>
-            </div>
-          </div>
-        ))}
+    <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
+      <div className="mb-10">
+        <p className="text-sm font-medium text-accent">{team.company.name} · team space</p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+          Rehearse the conversation before it happens.
+        </h1>
+        <p className="mt-2 max-w-xl text-muted">
+          Every teammate has an AI clone trained on their real decisions. Test your request on
+          the clone first — get the likely reaction, objections and the best way to frame it.
+        </p>
       </div>
 
-      <Link href="/team" className="mt-10 inline-block text-sm underline">
-        Team settings
-      </Link>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {team.members.map((member) => {
+          const clone = clones[member.id];
+          if (!clone) return null;
+          return (
+            <div key={member.id} className="card card-hover p-5">
+              <Link href={`/clone/${member.id}`} className="flex items-start gap-4">
+                <Avatar id={member.id} name={member.name} size="lg" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="truncate text-lg font-medium">{member.name}</h2>
+                    <Badge variant={clone.trained ? "trained" : "untrained"}>
+                      {clone.trained ? "● trained" : "○ not trained"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted">{member.role}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {member.consent && <Badge variant="consent">✓ consent given</Badge>}
+                    {clone.voiceId && <Badge variant="voice">voice ready</Badge>}
+                  </div>
+                </div>
+              </Link>
+
+              <div className="mt-4 flex gap-2 border-t border-white/5 pt-4">
+                <Link
+                  href={`/chat/${member.id}`}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-sm transition-colors ${
+                    clone.trained
+                      ? "bg-white/5 hover:bg-white/10"
+                      : "pointer-events-none text-muted opacity-40"
+                  }`}
+                >
+                  <ActionIcon d={icons.chat} /> Chat
+                </Link>
+                <Link
+                  href={`/room/${member.id}`}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-sm transition-colors ${
+                    clone.trained
+                      ? "bg-accent-soft text-accent hover:bg-accent/25"
+                      : "pointer-events-none text-muted opacity-40"
+                  }`}
+                >
+                  <ActionIcon d={icons.meeting} /> Meeting
+                </Link>
+                <span
+                  className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full py-2 text-sm text-muted opacity-40"
+                  title="Slack integration — coming soon"
+                >
+                  <ActionIcon d={icons.slack} /> Slack
+                </span>
+              </div>
+
+              {!clone.trained && (
+                <Link
+                  href={`/training/${member.id}`}
+                  className="mt-3 block text-center text-xs text-accent hover:underline"
+                >
+                  Train this clone →
+                </Link>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </main>
   );
 }

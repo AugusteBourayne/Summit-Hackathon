@@ -1,5 +1,7 @@
 {
-  "clone_demo": [
-    { "name": "TODO: nom du projet fictif", "deadline": "2026-07-15", "status": "at risk" }
+  "elena": [
+    { "name": "Atlas release (multi-warehouse)", "deadline": "2026-07-15", "status": "at risk" },
+    { "name": "Forecast API v2 migration", "deadline": "2026-08-30", "status": "on track" },
+    { "name": "Onboarding revamp", "deadline": "2026-09-15", "status": "paused" }
   ]
 }

@@ -1,15 +1,13 @@
 {
   "company": {
-    "name": "TODO(Auguste): nom de l'entreprise fictive",
-    "description": "TODO: ce que fait l'entreprise, en 2-3 phrases",
-    "product": "TODO: comment fonctionne son produit/plateforme"
+    "name": "Lumora",
+    "description": "Lumora is a B2B SaaS that helps retail chains forecast inventory with AI. 40-person team, Series A, based in Paris. Current top priority: shipping the 'Atlas' release on July 15 for our two biggest enterprise clients.",
+    "product": "A web platform that ingests sales and logistics data, runs demand forecasting models, and gives store managers daily restocking recommendations. The Atlas release adds multi-warehouse support — it is the deadline everyone is working toward."
   },
   "members": [
-    {
-      "id": "clone_demo",
-      "name": "TODO: nom du persona fictif",
-      "role": "TODO: poste (ex. Engineering Manager)",
-      "consent": true
-    }
+    { "id": "elena", "name": "Elena Marchetti", "role": "Engineering Manager", "consent": true },
+    { "id": "raphael", "name": "Raphaël", "role": "Product & Frontend", "consent": true },
+    { "id": "geraud", "name": "Géraud", "role": "Backend Engineer", "consent": true },
+    { "id": "auguste", "name": "Auguste", "role": "Data & Growth", "consent": true }
   ]
 }

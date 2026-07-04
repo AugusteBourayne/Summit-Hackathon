@@ -1,9 +1,30 @@
 {
-  "clone_demo": {
-    "name": "TODO: nom du persona fictif",
-    "role": "TODO: poste",
+  "elena": {
+    "name": "Elena Marchetti",
+    "role": "Engineering Manager",
     "voiceId": null,
-    "personaProfile": "TODO(Auguste): profil comportemental structuré — style de communication, priorités, critères de décision récurrents, manières de refuser.",
+    "personaProfile": "Direct but warm communicator. Protects the team's focus above all — hates context switching. Says no to anything that risks the Atlas deadline unless there is a written impact analysis. Prefers Slack messages under 5 lines, asks 'what happens if we don't?' before accepting new work. Softens refusals by proposing an alternative date. Values people who come with options, not problems.",
+    "trained": true
+  },
+  "raphael": {
+    "name": "Raphaël",
+    "role": "Product & Frontend",
+    "voiceId": null,
+    "personaProfile": "",
+    "trained": false
+  },
+  "geraud": {
+    "name": "Géraud",
+    "role": "Backend Engineer",
+    "voiceId": null,
+    "personaProfile": "",
+    "trained": false
+  },
+  "auguste": {
+    "name": "Auguste",
+    "role": "Data & Growth",
+    "voiceId": null,
+    "personaProfile": "",
     "trained": false
   }
 }

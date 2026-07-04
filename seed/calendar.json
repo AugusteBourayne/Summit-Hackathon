@@ -1,5 +1,8 @@
 {
-  "clone_demo": [
-    { "date": "2026-07-07", "title": "TODO: exemple d'événement d'agenda", "busy": true }
+  "elena": [
+    { "date": "2026-07-06", "title": "Atlas release go/no-go review", "busy": true },
+    { "date": "2026-07-07", "title": "1:1s with the backend squad", "busy": true },
+    { "date": "2026-07-08", "title": "Client demo — Carrefour pilot", "busy": true },
+    { "date": "2026-07-10", "title": "Free slot (afternoon)", "busy": false }
   ]
 }
