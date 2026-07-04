@@ -21,6 +21,12 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
 export const api = {
   ingest: (params: { scope: string; content: string; source: "upload" | "interview" }) =>
     post<{ chunksAdded: number }>("/api/ingest", params),
@@ -35,4 +41,7 @@ export const api = {
 
   cloneVoice: (params: { audioSample: string }) =>
     post<{ voiceId: string }>("/api/voice/clone", params),
+
+  cloneStats: (cloneId: string) =>
+    get<{ docChunks: number; interviewChunks: number }>(`/api/clones/${cloneId}/stats`),
 };

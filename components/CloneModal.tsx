@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageSquare, X } from "lucide-react";
 import { Clone } from "@/lib/team";
+import { api } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { SlackHint } from "@/components/Slack";
+
+// Combine 3 signaux réels : documents ingérés, réponses d'interview, voix clonée — plutôt
+// qu'un chiffre fixe. Plafonné à 8 chunks de documents pour atteindre le score max de cette
+// partie (au-delà, plus de docs n'ajoute pas grand-chose à la fidélité du clone).
+function computeAccuracy(docChunks: number, interviewChunks: number, voiceCloned: boolean): number {
+  const docScore = Math.min(docChunks, 8) / 8 * 50;
+  const interviewScore = interviewChunks > 0 ? 20 : 0;
+  const voiceScore = voiceCloned ? 20 : 0;
+  return Math.round(10 + docScore + interviewScore + voiceScore);
+}
 
 export function CloneModal({
   cloneId,
@@ -19,6 +30,8 @@ export function CloneModal({
   isSelf: boolean;
   onClose: () => void;
 }) {
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -27,7 +40,20 @@ export function CloneModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const accuracy = clone.trained ? 92 : 8;
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .cloneStats(cloneId)
+      .then(({ docChunks, interviewChunks }) => {
+        if (!cancelled) setAccuracy(computeAccuracy(docChunks, interviewChunks, !!clone.voiceId));
+      })
+      .catch(() => {
+        if (!cancelled) setAccuracy(computeAccuracy(0, 0, !!clone.voiceId));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cloneId, clone.voiceId]);
 
   return (
     <div
@@ -62,17 +88,17 @@ export function CloneModal({
         <div className="mt-5">
           <div className="flex items-center justify-between text-xs">
             <span className="font-medium text-muted">Clone accuracy</span>
-            <span className="font-mono text-muted">{accuracy}%</span>
+            <span className="font-mono text-muted">{accuracy === null ? "…" : `${accuracy}%`}</span>
           </div>
           <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-black/[0.06]">
             <div
               className="h-full rounded-full bg-accent transition-all"
-              style={{ width: `${accuracy}%` }}
+              style={{ width: `${accuracy ?? 0}%` }}
             />
           </div>
           <p className="mt-1.5 text-xs text-muted">
             {clone.trained
-              ? "Trained on documents and a full interview."
+              ? "Based on documents ingested, interview answers, and voice cloning."
               : "Not trained yet — answers won't be reliable."}
           </p>
         </div>
