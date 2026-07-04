@@ -66,10 +66,32 @@ Crée une voix clonée à partir d'un échantillon audio (Gradium).
 { voiceId: string }
 ```
 
+### `GET` / `POST /api/clones/:cloneId/behaviors`
+Profil comportemental éditable d'un clone : un résumé lisible + une liste de comportements
+distincts. La personne peut, depuis son propre profil, éditer / supprimer / ajouter ses
+comportements (consentement actif sur ce que fait son clone).
+```ts
+type Behavior = { id: string; text: string };
+// GET  Response
+{ summary: string, behaviors: Behavior[] }
+// POST Request (= Response)
+{ summary: string, behaviors: Behavior[] }
+```
+**TODO(Géraud)** — la route est mockée côté frontend (renvoie le seed / echo). Deux choses à
+brancher côté backend :
+1. **Persister** le `{ summary, behaviors }` reçu (fichier/SQLite comme le reste du store).
+2. **La synthèse `/api/ask` doit s'appuyer sur `summary` + `behaviors`** (au lieu de
+   `personaProfile`) : si la personne supprime un comportement, le clone doit cesser de s'en
+   servir. `personaProfile` reste dans le seed pour compat, mais `summary`+`behaviors` sont la
+   nouvelle source de vérité du comportement.
+
 ## Fichiers de seed (`/seed`)
 
 - `team.json` — `{ company: { name, description, product }, members: [{ id, name, role, consent }] }`
-- `clones.json` — `{ [cloneId]: { name, role, voiceId, personaProfile, trained } }`
+- `clones.json` — `{ [cloneId]: { name, role, voiceId, personaProfile, trained, summary, behaviors } }`
+  - `summary: string` — résumé lisible du comportement (affiché sur le profil).
+  - `behaviors: { id: string; text: string }[]` — comportements distincts, éditables par la personne.
+  - `personaProfile: string` — ancien bloc markdown, conservé pour compat (déprécié : préférer `summary`+`behaviors`).
 - `calendar.json` — outil simulé (agenda du clone)
 - `projects.json` — outil simulé (tracker de projet du clone)
 - `interview_questions.json` — les 8-10 questions fixes de la première interview

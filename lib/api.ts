@@ -11,6 +11,9 @@ export type AskResponse = {
   steps: string[];
 };
 
+export type Behavior = { id: string; text: string };
+export type CloneProfile = { summary: string; behaviors: Behavior[] };
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
@@ -57,4 +60,11 @@ export const api = {
 
   updateClone: (cloneId: string, updates: Partial<{ voiceId: string | null; trained: boolean }>) =>
     patch(`/api/clones/${cloneId}`, updates),
+
+  // Profil comportemental éditable d'un clone (résumé + liste de comportements).
+  getBehaviors: (cloneId: string) =>
+    get<CloneProfile>(`/api/clones/${cloneId}/behaviors`),
+
+  saveBehaviors: (cloneId: string, profile: CloneProfile) =>
+    post<CloneProfile>(`/api/clones/${cloneId}/behaviors`, profile),
 };

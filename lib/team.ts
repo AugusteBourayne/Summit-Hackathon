@@ -2,12 +2,15 @@ import teamData from "@/seed/team.json";
 import clonesData from "@/seed/clones.json";
 
 export type Member = { id: string; name: string; role: string; consent: boolean };
+export type Behavior = { id: string; text: string };
 export type Clone = {
   name: string;
   role: string;
   voiceId: string | null;
   personaProfile: string;
   trained: boolean;
+  summary?: string;
+  behaviors?: Behavior[];
 };
 
 export const team = teamData as {
