@@ -61,7 +61,7 @@ export default function Chat({ params }: { params: Promise<{ cloneId: string }> 
         {messages.length === 0 && (
           <div className="mt-16 text-center text-muted">
             <p className="text-sm">
-              Try: &ldquo;Can I push the Atlas deadline by two days?&rdquo;
+              Try: &ldquo;Can I push the Salesforce integration by two days?&rdquo;
             </p>
           </div>
         )}

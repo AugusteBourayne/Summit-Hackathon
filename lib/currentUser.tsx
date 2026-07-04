@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 const STORAGE_KEY = "f2f-current-user";
-const DEFAULT_USER = "raphael";
+const DEFAULT_USER = "employe-demo";
 
 const CurrentUserContext = createContext<{
   currentUserId: string;

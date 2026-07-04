@@ -8,7 +8,7 @@ import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
 import { CloneModal } from "@/components/CloneModal";
 
-const PRIMARY_IDS = ["elena", "raphael", "geraud"];
+const PRIMARY_IDS = ["claire-dumont", "employe-demo", "second-clone-demo"];
 
 function Bubble({
   member,
@@ -109,15 +109,17 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="mt-8 flex justify-center">
-        <button
-          onClick={() => setShowMore((v) => !v)}
-          className="flex flex-col items-center gap-1 text-xs text-muted hover:text-foreground"
-        >
-          More teammates
-          <ChevronDown className={`h-4 w-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
-        </button>
-      </div>
+      {rest.length > 0 && (
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={() => setShowMore((v) => !v)}
+            className="flex flex-col items-center gap-1 text-xs text-muted hover:text-foreground"
+          >
+            More teammates
+            <ChevronDown className={`h-4 w-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+      )}
 
       {showMore && (
         <div className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-10">

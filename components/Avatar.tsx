@@ -7,7 +7,7 @@ const sizes = {
   xl: "h-28 w-28 text-3xl",
 };
 
-const photoAvatars = new Set(["elena", "raphael", "geraud", "auguste"]);
+const photoAvatars = new Set<string>();
 
 export function Avatar({
   id,
