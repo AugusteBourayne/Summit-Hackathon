@@ -2,10 +2,11 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { MessageSquare, Mic, Hash, X } from "lucide-react";
+import { MessageSquare, X } from "lucide-react";
 import { Clone } from "@/lib/team";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
+import { SlackHint } from "@/components/Slack";
 
 export function CloneModal({
   cloneId,
@@ -76,42 +77,30 @@ export function CloneModal({
           </p>
         </div>
 
-        <div className="mt-5 grid grid-cols-3 gap-2">
-          <Link
-            href={clone.trained ? `/chat/${cloneId}` : "#"}
-            className={`flex flex-col items-center gap-1.5 rounded-xl py-3 text-xs ${
-              clone.trained ? "bg-black/[0.03] hover:bg-black/[0.06]" : "pointer-events-none opacity-40"
-            }`}
-          >
-            <MessageSquare className="h-4 w-4" /> Chat
-          </Link>
-          <Link
-            href={clone.trained ? `/room/${cloneId}` : "#"}
-            className={`flex flex-col items-center gap-1.5 rounded-xl py-3 text-xs ${
-              clone.trained ? "bg-accent-soft text-accent hover:bg-accent/20" : "pointer-events-none opacity-40"
-            }`}
-          >
-            <Mic className="h-4 w-4" /> Meeting
-          </Link>
-          <span
-            className="flex cursor-not-allowed flex-col items-center gap-1.5 rounded-xl py-3 text-xs text-muted/50"
-            title="Slack — coming soon"
-          >
-            <Hash className="h-4 w-4" /> Slack
-          </span>
-        </div>
-
-        <div className="mt-5 border-t border-black/5 pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Conversation history
-          </p>
-          <p className="mt-2 text-sm text-muted">No conversations yet.</p>
+        <div className="mt-5">
+          {clone.trained ? (
+            <Link
+              href={`/room/${cloneId}`}
+              className="flex items-center justify-center gap-2 rounded-full bg-accent py-2.5 text-sm font-medium text-white hover:opacity-90"
+            >
+              <MessageSquare className="h-4 w-4" /> Ask {clone.name.split(" ")[0]}
+            </Link>
+          ) : (
+            <span className="flex items-center justify-center gap-2 rounded-full bg-black/[0.04] py-2.5 text-sm text-muted/60">
+              Not trained yet
+            </span>
+          )}
+          {clone.trained && (
+            <div className="mt-3">
+              <SlackHint name={clone.name} />
+            </div>
+          )}
         </div>
 
         {isSelf && (
           <Link
             href={`/training/${cloneId}`}
-            className="mt-5 block rounded-full bg-accent py-2.5 text-center text-sm font-medium text-white"
+            className="mt-5 block rounded-full border border-black/10 py-2.5 text-center text-sm font-medium text-foreground hover:bg-black/[0.03]"
           >
             {clone.trained ? "Improve my clone →" : "Train my clone →"}
           </Link>

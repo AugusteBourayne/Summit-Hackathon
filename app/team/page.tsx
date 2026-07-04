@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { team } from "@/lib/team";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
+import { SlackLogo } from "@/components/Slack";
 
 type UploadedDoc = { name: string; chunks: number };
 
@@ -20,6 +21,7 @@ export default function TeamSettings() {
 
   const [docs, setDocs] = useState<UploadedDoc[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [slackConnected, setSlackConnected] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function save() {
@@ -149,6 +151,43 @@ export default function TeamSettings() {
           </button>
           {saved && <p className="text-sm text-emerald-600">{saved}</p>}
         </div>
+      </div>
+
+      <h2 className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted">
+        Integrations
+      </h2>
+      <div className="card mt-3 p-6">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/[0.03]">
+            <SlackLogo className="h-5 w-5" />
+          </span>
+          <div className="flex-1">
+            <h3 className="font-medium">Slack</h3>
+            <p className="text-xs text-muted">
+              Let teammates mention a clone in Slack to get its take without leaving the channel.
+            </p>
+          </div>
+          {slackConnected ? (
+            <button
+              onClick={() => setSlackConnected(false)}
+              className="rounded-full bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-600"
+            >
+              ✓ Connected
+            </button>
+          ) : (
+            <button
+              onClick={() => setSlackConnected(true)}
+              className="rounded-full border border-black/10 px-4 py-2 text-sm font-medium hover:bg-black/[0.03]"
+            >
+              Connect Slack
+            </button>
+          )}
+        </div>
+        {slackConnected && (
+          <p className="mt-3 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-600">
+            Workspace linked. Teammates can now mention a clone from Slack — e.g. <span className="font-medium">@Claire Dumont</span> — to get a grounded reply. (Roadmap — demo connection.)
+          </p>
+        )}
       </div>
 
       <h2 className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted">

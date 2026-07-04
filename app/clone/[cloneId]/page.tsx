@@ -2,10 +2,12 @@
 
 import { use } from "react";
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 import { getClone, team } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
+import { SlackHint } from "@/components/Slack";
 
 export default function CloneProfile({
   params,
@@ -18,28 +20,7 @@ export default function CloneProfile({
   const isSelf = cloneId === currentUserId;
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
-
-  const interactions = [
-    {
-      href: `/chat/${cloneId}`,
-      title: "Chat",
-      description: "Text conversation with sourced answers",
-      enabled: clone.trained,
-    },
-    {
-      href: `/room/${cloneId}`,
-      title: "Meeting",
-      description: "Live voice conversation, like a call",
-      enabled: clone.trained,
-      highlight: true,
-    },
-    {
-      href: "#",
-      title: "Slack",
-      description: "Ping the clone from Slack — coming soon",
-      enabled: false,
-    },
-  ];
+  const firstName = clone.name.split(" ")[0];
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
@@ -66,24 +47,24 @@ export default function CloneProfile({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
           Talk to the clone
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {interactions.map((item) => (
+        {clone.trained ? (
+          <>
             <Link
-              key={item.title}
-              href={item.enabled ? item.href : "#"}
-              className={`card p-4 ${
-                item.enabled
-                  ? `card-hover ${item.highlight ? "border-accent/40" : ""}`
-                  : "pointer-events-none opacity-40"
-              }`}
+              href={`/room/${cloneId}`}
+              className="flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-white hover:opacity-90"
             >
-              <h3 className={`font-medium ${item.highlight && item.enabled ? "text-accent" : ""}`}>
-                {item.title}
-              </h3>
-              <p className="mt-1 text-xs text-muted">{item.description}</p>
+              <MessageSquare className="h-4 w-4" /> Ask {firstName}
             </Link>
-          ))}
-        </div>
+            <p className="mt-2 text-center text-xs text-muted">
+              One conversation — talk by voice or type, and drop a document to get their reaction on it.
+            </p>
+            <div className="mt-4">
+              <SlackHint name={clone.name} />
+            </div>
+          </>
+        ) : (
+          <div className="card p-4 text-sm text-muted">Not trained yet.</div>
+        )}
         {!clone.trained && isSelf && (
           <p className="mt-3 text-sm text-muted">
             This clone hasn&apos;t been trained yet.{" "}

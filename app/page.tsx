@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mic, Hash, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { team, clones, floatParams, Member } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
@@ -49,21 +49,12 @@ function Bubble({
 
       <div className="mt-2 flex h-7 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         {clone.trained ? (
-          <>
-            <Link
-              href={`/room/${member.id}`}
-              title="Meeting"
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent"
-            >
-              <Mic className="h-3 w-3" />
-            </Link>
-            <span
-              title="Slack — coming soon"
-              className="flex h-6 w-6 cursor-not-allowed items-center justify-center rounded-full bg-black/[0.04] text-muted/50"
-            >
-              <Hash className="h-3 w-3" />
-            </span>
-          </>
+          <Link
+            href={`/room/${member.id}`}
+            className="rounded-full bg-accent-soft px-3 py-1 text-[11px] font-medium text-accent hover:bg-accent/20"
+          >
+            Ask {member.name.split(" ")[0]} →
+          </Link>
         ) : member.id === currentUserId ? (
           <Link href={`/training/${member.id}`} className="text-[11px] text-accent">
             Train me →

@@ -1,16 +1,26 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, Mic, Paperclip, Send, X } from "lucide-react";
 import { api, AskResponse } from "@/lib/api";
 import { getClone } from "@/lib/team";
 import { useRecorder } from "@/lib/useRecorder";
-import { Orb, OrbState } from "@/components/Orb";
+import { Avatar } from "@/components/Avatar";
 import { GroundedPanel } from "@/components/GroundedPanel";
+import { SlackHint } from "@/components/Slack";
 
-type Turn = { role: "user" | "clone"; text: string };
+type Attachment = { name: string; content: string };
+type Turn = {
+  role: "user" | "clone";
+  text: string;
+  attachments?: string[];
+  grounded?: AskResponse;
+};
 
-export default function InteractionRoom({
+const READABLE = /\.(txt|md|csv|json)$/i;
+
+export default function AskClone({
   params,
 }: {
   params: Promise<{ cloneId: string }>;
@@ -18,149 +28,273 @@ export default function InteractionRoom({
   const { cloneId } = use(params);
   const clone = getClone(cloneId);
   const recorder = useRecorder();
-  const [orbState, setOrbState] = useState<OrbState>("idle");
-  const [transcript, setTranscript] = useState<Turn[]>([]);
+
+  const [turns, setTurns] = useState<Turn[]>([]);
   const [last, setLast] = useState<AskResponse | null>(null);
-  const [typedMode, setTypedMode] = useState(false);
-  const [typed, setTyped] = useState("");
+  const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [status, setStatus] = useState<"idle" | "thinking" | "speaking">("idle");
+  const [dragOver, setDragOver] = useState(false);
+  const [openPanel, setOpenPanel] = useState<number | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
+  const firstName = clone.name.split(" ")[0];
 
-  async function handleUserText(text: string) {
-    if (!text.trim()) {
-      setOrbState("idle");
-      return;
+  function scrollDown() {
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  }
+
+  async function addFiles(files: FileList | File[]) {
+    const next: Attachment[] = [];
+    for (const file of Array.from(files)) {
+      if (!READABLE.test(file.name)) continue;
+      next.push({ name: file.name, content: await file.text() });
     }
-    setTranscript((prev) => [...prev, { role: "user", text }]);
-    setOrbState("thinking");
+    if (next.length) setAttachments((prev) => [...prev, ...next]);
+  }
+
+  async function send(rawText: string) {
+    const text = rawText.trim();
+    if ((!text && attachments.length === 0) || status === "thinking") return;
+
+    const attached = attachments;
+    setInput("");
+    setAttachments([]);
+
+    // Le contenu des documents joints est passé en contexte du message : le clone réagit
+    // au livrable qu'on lui montre (cas d'usage : montrer son travail à son N+1).
+    const docBlocks = attached
+      .map((a) => `--- Shared document: ${a.name} ---\n${a.content}`)
+      .join("\n\n");
+    const displayText = text || (attached.length ? "Here's what I'm working on — what do you think?" : "");
+    const payload = docBlocks ? `${docBlocks}\n\n${displayText}` : displayText;
+
+    setTurns((prev) => [
+      ...prev,
+      { role: "user", text: displayText, attachments: attached.map((a) => a.name) },
+    ]);
+    setStatus("thinking");
+    scrollDown();
+
     try {
-      const result = await api.ask({ cloneId, mode: "clone", text });
+      const result = await api.ask({ cloneId, mode: "clone", text: payload });
       setLast(result);
-      setTranscript((prev) => [...prev, { role: "clone", text: result.response }]);
-      setOrbState("speaking");
+      setTurns((prev) => [...prev, { role: "clone", text: result.response, grounded: result }]);
+      scrollDown();
+      setStatus("speaking");
       try {
         const { audioUrl } = await api.tts({ text: result.response, voiceId: clone!.voiceId });
         const audio = new Audio(audioUrl);
-        audio.onended = () => setOrbState("idle");
+        audio.onended = () => setStatus("idle");
+        audio.onerror = () => setStatus("idle");
         await audio.play();
       } catch {
-        // TTS pas encore branché (mock) : on repasse en idle sans son.
-        setOrbState("idle");
+        setStatus("idle");
       }
     } catch {
-      setOrbState("idle");
+      setStatus("idle");
     }
   }
 
   async function pressMic() {
-    const ok = await recorder.start();
-    if (ok) setOrbState("listening");
+    if (status === "thinking") return;
+    await recorder.start();
   }
 
   async function releaseMic() {
     const audio = await recorder.stop();
-    if (!audio) {
-      setOrbState("idle");
-      return;
-    }
-    setOrbState("thinking");
+    if (!audio) return;
+    setStatus("thinking");
     try {
       const { text } = await api.stt({ audio });
-      await handleUserText(text);
+      await send(text);
     } catch {
-      setOrbState("idle");
+      setStatus("idle");
     }
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 gap-6 px-6 py-8">
-      {/* Scène principale */}
-      <div className="flex flex-1 flex-col items-center">
-        <div className="flex w-full items-center justify-between">
-          <div>
-            <h1 className="font-medium">{clone.name}</h1>
-            <p className="text-xs text-muted">{clone.role} · voice meeting</p>
-          </div>
-          <Link
-            href={`/clone/${cloneId}`}
-            className="rounded-full border border-black/10 px-4 py-1.5 text-sm text-muted hover:text-foreground"
-          >
-            End meeting
+    <main className="mx-auto flex w-full max-w-6xl flex-1 gap-6 px-6 py-6">
+      {/* Colonne conversation */}
+      <div className="flex flex-1 flex-col">
+        <div className="flex items-center gap-3 border-b border-black/5 pb-4">
+          <Link href={`/clone/${cloneId}`} className="text-muted hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
           </Link>
+          <Avatar id={cloneId} name={clone.name} size="md" />
+          <div className="flex-1">
+            <h1 className="font-medium">Ask {firstName}</h1>
+            <p className="text-xs text-muted">
+              {clone.role} · talk or type — {firstName}&apos;s answers are grounded in real documents
+            </p>
+          </div>
+          {status !== "idle" && (
+            <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs text-accent">
+              {status === "thinking" ? "thinking" : "speaking"}
+              <span className="flex gap-0.5">
+                <span className="dot h-1 w-1 rounded-full bg-accent" />
+                <span className="dot h-1 w-1 rounded-full bg-accent" />
+                <span className="dot h-1 w-1 rounded-full bg-accent" />
+              </span>
+            </span>
+          )}
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-8">
-          <Orb state={orbState} />
-
-          {recorder.unsupported && (
-            <p className="text-xs text-amber-400">
-              Microphone unavailable — use the keyboard instead.
-            </p>
+        {/* Transcript (zone de drop) */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            addFiles(e.dataTransfer.files);
+          }}
+          className={`relative flex-1 space-y-4 overflow-y-auto py-6 ${
+            dragOver ? "rounded-2xl outline-2 outline-dashed outline-accent" : ""
+          }`}
+        >
+          {turns.length === 0 && (
+            <div className="mt-16 text-center text-muted">
+              <p className="text-sm">
+                Try: &ldquo;Can I push the Salesforce integration by two days?&rdquo;
+              </p>
+              <p className="mt-2 text-xs">
+                Or drop a deliverable here to get {firstName}&apos;s reaction on it.
+              </p>
+            </div>
           )}
 
-          <div className="flex items-center gap-3">
+          {turns.map((turn, i) => (
+            <div key={i}>
+              <div className={`flex ${turn.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                    turn.role === "user" ? "bg-accent text-white" : "card rounded-tl-sm"
+                  }`}
+                >
+                  {turn.attachments && turn.attachments.length > 0 && (
+                    <div className="mb-1.5 flex flex-wrap gap-1.5">
+                      {turn.attachments.map((name, j) => (
+                        <span
+                          key={j}
+                          className="flex items-center gap-1 rounded-md bg-white/20 px-1.5 py-0.5 text-[11px]"
+                        >
+                          <Paperclip className="h-3 w-3" /> {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {turn.text}
+                </div>
+              </div>
+              {turn.role === "clone" && turn.grounded && (
+                <div className="mt-1.5 pl-1">
+                  <button
+                    onClick={() => setOpenPanel(openPanel === i ? null : i)}
+                    className="text-xs text-muted hover:text-accent lg:hidden"
+                  >
+                    {openPanel === i ? "Hide sources ▲" : "Why this answer? ▼"}
+                  </button>
+                  {openPanel === i && (
+                    <div className="card mt-2 p-4 lg:hidden">
+                      <GroundedPanel data={turn.grounded} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Barre de saisie : documents + texte + voix, tout disponible en même temps */}
+        <div className="sticky bottom-0 bg-background pb-4 pt-2">
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {attachments.map((a, i) => (
+                <span
+                  key={i}
+                  className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-xs text-accent"
+                >
+                  <Paperclip className="h-3 w-3" />
+                  {a.name}
+                  <button
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    className="hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".txt,.md,.csv,.json"
+              hidden
+              onChange={(e) => e.target.files && addFiles(e.target.files)}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach a document"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/10 text-muted hover:text-foreground"
+            >
+              <Paperclip className="h-5 w-5" />
+            </button>
+
+            <input
+              className="min-w-0 flex-1 rounded-full border border-black/10 bg-surface px-5 py-3 text-sm outline-none placeholder:text-muted focus:border-accent/50"
+              placeholder={`Message ${firstName}, or hold the mic to talk...`}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && send(input)}
+            />
+
             <button
               onPointerDown={pressMic}
               onPointerUp={releaseMic}
               onPointerLeave={() => recorder.recording && releaseMic()}
-              className={`flex h-16 w-16 items-center justify-center rounded-full transition-all ${
-                recorder.recording
-                  ? "scale-110 bg-red-500 text-white"
-                  : "bg-accent text-white hover:scale-105"
-              }`}
               title="Hold to talk"
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all ${
+                recorder.recording ? "scale-110 bg-red-500 text-white" : "border border-black/10 text-muted hover:text-foreground"
+              }`}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3m-3 0h6M12 15a4 4 0 004-4V7a4 4 0 10-8 0v4a4 4 0 004 4z" />
-              </svg>
+              <Mic className="h-5 w-5" />
             </button>
+
             <button
-              onClick={() => setTypedMode(!typedMode)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 text-muted hover:text-foreground"
-              title="Type instead"
+              onClick={() => send(input)}
+              disabled={status === "thinking" || (!input.trim() && attachments.length === 0)}
+              title="Send"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-opacity disabled:opacity-40"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h10" />
-              </svg>
+              <Send className="h-5 w-5" />
             </button>
           </div>
-          <p className="text-xs text-muted">Hold the mic to talk — release to send</p>
 
-          {typedMode && (
-            <div className="flex w-full max-w-md gap-2">
-              <input
-                autoFocus
-                className="flex-1 rounded-full border border-black/10 bg-surface px-4 py-2.5 text-sm outline-none focus:border-accent/50"
-                placeholder="Type what you'd say..."
-                value={typed}
-                onChange={(e) => setTyped(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleUserText(typed);
-                    setTyped("");
-                  }
-                }}
-              />
-            </div>
+          {recorder.unsupported && (
+            <p className="mt-2 text-center text-xs text-amber-500">
+              Microphone unavailable — use the keyboard instead.
+            </p>
           )}
-        </div>
 
-        {/* Transcript */}
-        {transcript.length > 0 && (
-          <div className="mt-6 max-h-40 w-full space-y-1.5 overflow-y-auto border-t border-black/5 pt-4 text-sm">
-            {transcript.map((turn, i) => (
-              <p key={i} className={turn.role === "user" ? "text-muted" : ""}>
-                <span className="mr-2 font-mono text-[10px] uppercase text-muted">
-                  {turn.role === "user" ? "you" : clone.name.split(" ")[0]}
-                </span>
-                {turn.text}
-              </p>
-            ))}
+          <div className="mt-3">
+            <SlackHint name={clone.name} />
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Panneau grounded */}
+      {/* Panneau grounded (desktop) */}
       <aside className="hidden w-80 shrink-0 lg:block">
         <div className="card sticky top-20 max-h-[80vh] overflow-y-auto p-5">
           <h2 className="mb-4 text-sm font-semibold">Grounded response</h2>
@@ -168,7 +302,7 @@ export default function InteractionRoom({
             <GroundedPanel data={last} />
           ) : (
             <p className="text-sm text-muted">
-              Ask something and the clone&apos;s sources, likely objections and suggested framing
+              Ask something and {firstName}&apos;s sources, likely objections and suggested framing
               will appear here.
             </p>
           )}
