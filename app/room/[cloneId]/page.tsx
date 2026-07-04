@@ -102,7 +102,7 @@ export default function AskClone({
         const audio = new Audio(audioUrl);
         audio.onended = () => {
           setStatus("idle");
-          if (voiceModeRef.current) pressMic();
+          if (voiceModeRef.current) pressMicForCall();
         };
         audio.onerror = () => setStatus("idle");
         await audio.play();
@@ -124,6 +124,14 @@ export default function AskClone({
     if (status === "thinking") return;
     setVoiceError(null);
     await recorder.start();
+  }
+
+  // Conversation vocale : l'enregistrement s'arrête tout seul dès qu'un silence suit un moment
+  // de parole (analyse locale du niveau micro) — plus besoin de cliquer pour dire "j'ai fini".
+  async function pressMicForCall() {
+    if (status === "thinking") return;
+    setVoiceError(null);
+    await recorder.start(() => releaseMicAndSend());
   }
 
   // Chat normal : la voix ne fait que remplir la barre de texte — l'utilisateur relit,
@@ -173,7 +181,7 @@ export default function AskClone({
     if (recorder.recording) {
       await releaseMicAndSend();
     } else {
-      await pressMic();
+      await pressMicForCall();
     }
   }
 
@@ -185,7 +193,7 @@ export default function AskClone({
       if (recorder.recording) recorder.stop();
     } else {
       setVoiceModeState(true);
-      pressMic();
+      pressMicForCall();
     }
   }
 
@@ -198,12 +206,12 @@ export default function AskClone({
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-6 py-6">
         <Avatar id={cloneId} name={clone.name} size="xl" />
         <h1 className="text-lg font-medium">{firstName}</h1>
-        <button onClick={toggleVoiceMic} title={recorder.recording ? "Click to stop and send" : "Click to talk"}>
+        <button onClick={toggleVoiceMic} title={recorder.recording ? "Click to stop now" : "Click to talk"}>
           <Orb state={orbState} />
         </button>
         <p className="text-xs text-muted">
           {recorder.recording
-            ? "Listening — click the orb when you're done talking"
+            ? "Listening — stops automatically once you go quiet (or click to stop now)"
             : status === "thinking"
               ? "Thinking…"
               : status === "speaking"
