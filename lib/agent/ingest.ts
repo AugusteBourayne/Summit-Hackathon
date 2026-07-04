@@ -114,8 +114,20 @@ export async function ingest(
   content: string,
   source: "upload" | "interview"
 ): Promise<number> {
-  const collectionId = await ensureCollection(scope);
   const chunks = chunkText(content);
+
+  // Mode demo / hors-ligne : sans VULTR_API_KEY configuree, on n'appelle pas le vector store
+  // (sinon la route renvoie un 500 et le Training Studio est inutilisable). On "accepte" quand
+  // meme le document en renvoyant le nombre de chunks decoupes localement. Des que la cle est
+  // renseignee dans .env.local, le vrai chemin Vultr ci-dessous s'execute normalement.
+  if (!process.env.VULTR_API_KEY) {
+    console.warn(
+      "[ingest] VULTR_API_KEY absente — ingestion simulee (mode demo, aucun stockage vectoriel)."
+    );
+    return chunks.length;
+  }
+
+  const collectionId = await ensureCollection(scope);
 
   // On envoie les chunks un par un. La description encode la source, utile pour le debug et le retrieval.
   for (let i = 0; i < chunks.length; i++) {
