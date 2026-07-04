@@ -78,6 +78,7 @@ type WorkspaceContextValue = {
   switchWorkspace: (id: string) => void;
   deleteWorkspace: (id: string) => void;
   addMember: (input: { name: string; role: string }) => Member;
+  removeMember: (memberId: string) => void;
 };
 
 const Ctx = createContext<WorkspaceContextValue>({
@@ -91,6 +92,7 @@ const Ctx = createContext<WorkspaceContextValue>({
   switchWorkspace: () => {},
   deleteWorkspace: () => {},
   addMember: () => ({ id: "", name: "", role: "", consent: true }),
+  removeMember: () => {},
 });
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
@@ -197,6 +199,30 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     [overrides, activeId, persist],
   );
 
+  // Retire un membre (et son clone) du workspace actif.
+  const removeMember = useCallback(
+    (memberId: string) => {
+      const base = overrides[activeId] ?? (activeId === DEMO_WORKSPACE_ID ? demoWorkspace : undefined);
+      if (!base) return;
+
+      const remainingClones = { ...base.clones };
+      delete remainingClones[memberId];
+
+      const updated: Workspace = {
+        ...base,
+        members: base.members.filter((m) => m.id !== memberId),
+        clones: remainingClones,
+      };
+
+      setOverrides((prev) => {
+        const next = { ...prev, [activeId]: updated };
+        persist(next);
+        return next;
+      });
+    },
+    [overrides, activeId, persist],
+  );
+
   const switchWorkspace = useCallback(
     (id: string) => {
       setActiveId(id);
@@ -235,8 +261,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       switchWorkspace,
       deleteWorkspace,
       addMember,
+      removeMember,
     }),
-    [workspaces, active, createWorkspace, switchWorkspace, deleteWorkspace, addMember],
+    [workspaces, active, createWorkspace, switchWorkspace, deleteWorkspace, addMember, removeMember],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

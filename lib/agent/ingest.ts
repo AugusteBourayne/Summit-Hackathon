@@ -132,25 +132,27 @@ export async function ingest(
     return chunks.length;
   }
 
-  try {
-    const collectionId = await ensureCollection(scope);
+  const collectionId = await ensureCollection(scope);
 
-    // On envoie les chunks un par un. La description encode la source, utile pour le debug et le retrieval.
-    for (let i = 0; i < chunks.length; i++) {
-      const description = `source:${source} scope:${scope} chunk:${i}`;
+  // On envoie les chunks un par un. La description encode la source, utile pour le debug et le retrieval.
+  // Un essai puis un retry apres une courte pause : on a constate en pratique des echecs Vultr
+  // ponctuels (ex. "Maximum sequence length exceeded") qui reussissent au second essai avec le
+  // meme contenu — donc probablement transitoire cote Vultr plutot qu'un vrai rejet du contenu.
+  for (let i = 0; i < chunks.length; i++) {
+    const description = `source:${source} scope:${scope} chunk:${i}`;
+    try {
+      await addItem(collectionId, chunks[i], description);
+    } catch (err) {
+      console.warn(
+        `[ingest] echec chunk ${i}, nouvel essai dans 1s:`,
+        err instanceof Error ? err.message : err
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Si ce deuxieme essai echoue aussi, on laisse l'erreur remonter : mieux vaut un vrai
+      // message d'erreur cote interface qu'un faux succes qui cache une perte de donnees.
       await addItem(collectionId, chunks[i], description);
     }
-
-    return chunks.length;
-  } catch (err) {
-    // Le vrai chemin Vultr a echoue (ex: bug de creation de collection pour un nouveau clone,
-    // "Collection not found"). On degrade proprement pour ne pas casser le Training Studio :
-    // le document est "accepte" (chunks comptes) et l'erreur reelle est journalisee pour le
-    // backend. TODO(Geraud): fiabiliser la creation/lookup de collection Vultr.
-    console.warn(
-      "[ingest] chemin Vultr en echec — fallback mode demo:",
-      err instanceof Error ? err.message : err
-    );
-    return chunks.length;
   }
+
+  return chunks.length;
 }

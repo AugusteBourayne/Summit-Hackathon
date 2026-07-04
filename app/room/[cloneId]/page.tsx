@@ -4,7 +4,8 @@ import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Mic, Paperclip, PhoneCall, PhoneOff, Send, X } from "lucide-react";
 import { api, AskResponse } from "@/lib/api";
-import { getClone } from "@/lib/team";
+import { useWorkspace } from "@/lib/workspace";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { useRecorder } from "@/lib/useRecorder";
 import { Avatar } from "@/components/Avatar";
 import { GroundedPanel } from "@/components/GroundedPanel";
@@ -27,7 +28,9 @@ export default function AskClone({
   params: Promise<{ cloneId: string }>;
 }) {
   const { cloneId } = use(params);
+  const { getClone } = useWorkspace();
   const clone = getClone(cloneId);
+  const name = useDisplayName(cloneId, clone?.name ?? "");
   const recorder = useRecorder();
 
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -52,7 +55,7 @@ export default function AskClone({
   }
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
-  const firstName = clone.name.split(" ")[0];
+  const firstName = name.split(" ")[0];
 
   function scrollDown() {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -204,7 +207,7 @@ export default function AskClone({
   if (voiceMode) {
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-6 py-6">
-        <Avatar id={cloneId} name={clone.name} size="xl" />
+        <Avatar id={cloneId} name={name} size="xl" />
         <h1 className="text-lg font-medium">{firstName}</h1>
         <button onClick={toggleVoiceMic} title={recorder.recording ? "Click to stop now" : "Click to talk"}>
           <Orb state={orbState} />
@@ -254,7 +257,7 @@ export default function AskClone({
           <Link href={`/clone/${cloneId}`} className="text-muted hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <Avatar id={cloneId} name={clone.name} size="md" />
+          <Avatar id={cloneId} name={name} size="md" />
           <div className="flex-1">
             <h1 className="font-medium">Ask {firstName}</h1>
             <p className="text-xs text-muted">
@@ -415,7 +418,7 @@ export default function AskClone({
           )}
 
           <div className="mt-3">
-            <SlackHint name={clone.name} />
+            <SlackHint name={name} />
           </div>
         </div>
       </div>

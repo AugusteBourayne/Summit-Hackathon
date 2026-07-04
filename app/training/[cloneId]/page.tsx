@@ -1,11 +1,12 @@
 "use client";
 
-import { use, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { FileText, MessageCircleQuestion, Mic, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { useWorkspace } from "@/lib/workspace";
 import { useCurrentUser } from "@/lib/currentUser";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { useRecorder, concatWavClipsBase64 } from "@/lib/useRecorder";
 import { Avatar } from "@/components/Avatar";
 import questions from "@/seed/interview_questions.json";
@@ -49,13 +50,19 @@ export default function TrainingStudio({
   const { cloneId } = use(params);
   const { getClone } = useWorkspace();
   const clone = getClone(cloneId);
+  const name = useDisplayName(cloneId, clone?.name ?? "");
   const { currentUserId } = useCurrentUser();
   const recorder = useRecorder();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [docs, setDocs] = useState<UploadedDoc[]>([]);
+  const [docError, setDocError] = useState<string | null>(null);
   const [pasted, setPasted] = useState("");
   const [dragOver, setDragOver] = useState(false);
+
+  // Ce qui a déjà été ingéré lors d'une session précédente (le vrai stockage vit côté Vultr,
+  // pas dans cet état local qui repart à zéro à chaque montage du composant).
+  const [savedStats, setSavedStats] = useState<{ docChunks: number; interviewChunks: number } | null>(null);
 
   const [sessionStarted, setSessionStarted] = useState(false);
   const [step, setStep] = useState(0);
@@ -70,6 +77,24 @@ export default function TrainingStudio({
   // réel au clonage de voix (au lieu du texte factice qui était envoyé jusqu'ici).
   const [answerAudios, setAnswerAudios] = useState<string[]>([]);
 
+  // Recharge la progression déjà enregistrée à l'ouverture de la page — sans ça, "Documents"
+  // et "AI interview" affichent "Not started" après un simple rechargement, même si du contenu
+  // a bien été ingéré par le passé (le vrai stockage est côté Vultr, pas dans l'état React).
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .cloneStats(cloneId)
+      .then((stats) => {
+        if (!cancelled) setSavedStats(stats);
+      })
+      .catch(() => {
+        /* pas grave si indisponible — l'UI retombe sur "Not started" */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cloneId]);
+
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
 
   if (cloneId !== currentUserId) {
@@ -78,7 +103,7 @@ export default function TrainingStudio({
         <p className="text-4xl">🔒</p>
         <h1 className="mt-4 text-lg font-semibold">You can only train your own clone</h1>
         <p className="mt-2 text-sm text-muted">
-          {`${clone.name} needs to sign in themselves to train their clone — that's what keeps every profile consensual and accurate.`}
+          {`${name} needs to sign in themselves to train their clone — that's what keeps every profile consensual and accurate.`}
         </p>
         <Link
           href={`/training/${currentUserId}`}
@@ -91,12 +116,19 @@ export default function TrainingStudio({
   }
 
   async function ingestText(content: string, name: string) {
-    const { chunksAdded } = await api.ingest({
-      scope: `personal:${cloneId}`,
-      content,
-      source: "upload",
-    });
-    setDocs((prev) => [...prev, { name, chunks: chunksAdded }]);
+    setDocError(null);
+    try {
+      const { chunksAdded } = await api.ingest({
+        scope: `personal:${cloneId}`,
+        content,
+        source: "upload",
+      });
+      setDocs((prev) => [...prev, { name, chunks: chunksAdded }]);
+    } catch (err) {
+      setDocError(
+        `Couldn't save "${name}" (${err instanceof Error ? err.message : "unknown error"}). Try again.`
+      );
+    }
   }
 
   async function ingestFiles(files: FileList | File[]) {
@@ -195,10 +227,10 @@ export default function TrainingStudio({
       </Link>
 
       <div className="mt-6 flex items-center gap-4">
-        <Avatar id={cloneId} name={clone.name} size="lg" />
+        <Avatar id={cloneId} name={name} size="lg" />
         <div>
           <h1 className="text-2xl font-semibold">Training studio</h1>
-          <p className="text-muted">Building {clone.name}&apos;s clone</p>
+          <p className="text-muted">Building {name}&apos;s clone</p>
         </div>
       </div>
 
@@ -212,11 +244,17 @@ export default function TrainingStudio({
           icon={FileText}
           tint="violet"
           title="Documents"
-          status={docs.length > 0 ? `${docs.length} added` : "Not started"}
+          status={
+            docs.length > 0
+              ? `${docs.length} added this session`
+              : savedStats && savedStats.docChunks > 0
+                ? `${savedStats.docChunks} chunks saved`
+                : "Not started"
+          }
         />
         <p className="mt-3 text-sm text-muted">
           Meeting transcripts, decision logs, written feedback — anything that shows how{" "}
-          {clone.name.split(" ")[0]} reacts and decides. Drop as many as you want.
+          {name.split(" ")[0]} reacts and decides. Drop as many as you want.
         </p>
 
         <input
@@ -260,6 +298,10 @@ export default function TrainingStudio({
           Add to knowledge
         </button>
 
+        {docError && (
+          <p className="mt-2 rounded-lg bg-red-500/10 p-2.5 text-xs text-red-600">{docError}</p>
+        )}
+
         {docs.length > 0 && (
           <ul className="mt-4 space-y-1.5 border-t border-black/5 pt-4 text-sm">
             {docs.map((doc, i) => (
@@ -278,7 +320,15 @@ export default function TrainingStudio({
           icon={MessageCircleQuestion}
           tint="pink"
           title="AI interview"
-          status={interviewDone ? "Done" : sessionStarted ? `${answeredCount}/${questions.length}` : "Not started"}
+          status={
+            interviewDone
+              ? "Done"
+              : sessionStarted
+                ? `${answeredCount}/${questions.length}`
+                : savedStats && savedStats.interviewChunks > 0
+                  ? `${savedStats.interviewChunks} answers saved`
+                  : "Not started"
+          }
         />
         <p className="mt-3 text-sm text-muted">
           The AI asks targeted questions to learn how you react. Answer by voice or keyboard —

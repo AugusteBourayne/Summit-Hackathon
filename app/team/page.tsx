@@ -1,19 +1,71 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileStack, UserPlus } from "lucide-react";
+import { FileStack, UserPlus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useWorkspace } from "@/lib/workspace";
+import { useCurrentUser } from "@/lib/currentUser";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { SlackLogo } from "@/components/Slack";
+
+function MemberRow({
+  member,
+  isSelf,
+  onRemove,
+}: {
+  member: { id: string; name: string; role: string };
+  isSelf: boolean;
+  onRemove: (id: string) => void;
+}) {
+  const name = useDisplayName(member.id, member.name);
+  const [confirming, setConfirming] = useState(false);
+
+  return (
+    <div className="flex items-center gap-4 p-4">
+      <Avatar id={member.id} name={name} size="sm" />
+      <div className="flex-1">
+        <p className="text-sm font-medium">{name}</p>
+        <p className="text-xs text-muted">{member.role}</p>
+      </div>
+      <Badge variant="consent">✓ consent given</Badge>
+      {!isSelf &&
+        (confirming ? (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => onRemove(member.id)}
+              className="rounded-full bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-500/20"
+            >
+              Confirm remove
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              className="rounded-full px-3 py-1.5 text-xs text-muted hover:bg-black/[0.04]"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirming(true)}
+            title="Remove teammate"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-600"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        ))}
+    </div>
+  );
+}
 
 type UploadedDoc = { name: string; chunks: number };
 
 const ACCEPTED = ".pdf,.xlsx,.xls,.pptx,.ppt,.doc,.docx,.txt,.md,.csv";
 
 export default function TeamSettings() {
-  const { company, members, addMember } = useWorkspace();
+  const { company, members, addMember, removeMember } = useWorkspace();
+  const { currentUserId } = useCurrentUser();
   const [name, setName] = useState(company.name);
   const [description, setDescription] = useState(company.description);
   const [product, setProduct] = useState(company.product);
@@ -41,6 +93,7 @@ export default function TeamSettings() {
   }, [company.name, company.description, company.product]);
 
   const [docs, setDocs] = useState<UploadedDoc[]>([]);
+  const [docError, setDocError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [slackConnected, setSlackConnected] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,12 +108,16 @@ export default function TeamSettings() {
         source: "upload",
       });
       setSaved(`Saved — ${chunksAdded} chunk(s) added to the shared knowledge base.`);
+    } catch (err) {
+      setSaved(null);
+      setDocError(`Couldn't save (${err instanceof Error ? err.message : "unknown error"}). Try again.`);
     } finally {
       setSaving(false);
     }
   }
 
   async function ingestFiles(files: FileList | File[]) {
+    setDocError(null);
     for (const file of Array.from(files)) {
       // PDF/Excel/PowerPoint parsing happens backend-side — here we just queue the file
       // and ingest whatever text we can read directly (txt/md/csv).
@@ -68,8 +125,14 @@ export default function TeamSettings() {
       const content = isPlainText
         ? await file.text()
         : `[company document: ${file.name}, ${(file.size / 1024).toFixed(0)} KB — to be parsed by the agent]`;
-      const { chunksAdded } = await api.ingest({ scope: "team", content, source: "upload" });
-      setDocs((prev) => [...prev, { name: file.name, chunks: chunksAdded }]);
+      try {
+        const { chunksAdded } = await api.ingest({ scope: "team", content, source: "upload" });
+        setDocs((prev) => [...prev, { name: file.name, chunks: chunksAdded }]);
+      } catch (err) {
+        setDocError(
+          `Couldn't save "${file.name}" (${err instanceof Error ? err.message : "unknown error"}). Try again.`
+        );
+      }
     }
   }
 
@@ -122,6 +185,10 @@ export default function TeamSettings() {
           Drop PDF, Excel, PowerPoint, Word, or text files — or click to browse
         </button>
 
+        {docError && (
+          <p className="mt-2 rounded-lg bg-red-500/10 p-2.5 text-xs text-red-600">{docError}</p>
+        )}
+
         {docs.length > 0 && (
           <ul className="mt-4 space-y-1.5 border-t border-black/5 pt-4 text-sm">
             {docs.map((doc, i) => (
@@ -171,6 +238,7 @@ export default function TeamSettings() {
             {saving ? "Saving..." : "Save to knowledge base"}
           </button>
           {saved && <p className="text-sm text-emerald-600">{saved}</p>}
+          {docError && <p className="text-sm text-red-600">{docError}</p>}
         </div>
       </div>
 
@@ -267,14 +335,12 @@ export default function TeamSettings() {
           <div className="p-4 text-sm text-muted">No members yet.</div>
         )}
         {members.map((member) => (
-          <div key={member.id} className="flex items-center gap-4 p-4">
-            <Avatar id={member.id} name={member.name} size="sm" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">{member.name}</p>
-              <p className="text-xs text-muted">{member.role}</p>
-            </div>
-            <Badge variant="consent">✓ consent given</Badge>
-          </div>
+          <MemberRow
+            key={member.id}
+            member={member}
+            isSelf={member.id === currentUserId}
+            onRemove={removeMember}
+          />
         ))}
       </div>
     </main>
