@@ -363,8 +363,10 @@ export default function TrainingStudio({
               <button
                 onClick={toggleVoiceSampleMic}
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all ${
-                  recorder.recording ? "scale-110 bg-red-500" : "bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/15"
-                } text-white`}
+                  recorder.recording
+                    ? "scale-110 bg-red-500 text-white"
+                    : "bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/15"
+                }`}
                 title={recorder.recording ? "Click to stop recording" : "Click to record a voice sample"}
               >
                 <Mic className="h-5 w-5" />
