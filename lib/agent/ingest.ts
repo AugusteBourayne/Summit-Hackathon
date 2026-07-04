@@ -27,7 +27,7 @@ export function scopeToCollectionName(scope: string): string {
 // Decoupe un texte en morceaux d'environ 500 tokens avec un chevauchement.
 // Approximation simple : 1 token ~ 4 caracteres, donc 500 tokens ~ 2000 caracteres.
 // Le chevauchement evite de couper une idee en deux entre deux chunks.
-function chunkText(text: string, chunkChars = 2000, overlapChars = 200): string[] {
+function chunkText(text: string, chunkChars = 1000, overlapChars = 100): string[] {
   const chunks: string[] = [];
   let start = 0;
   while (start < text.length) {
