@@ -74,10 +74,15 @@ async function createCollection(name: string): Promise<string> {
   }
   const body = await res.json();
 
+  // Vultr enveloppe la collection creee dans un champ "collection" : { collection: { id, name } }.
+  // (Lire body.id directement renvoyait undefined -> "Collection not found" a l'ajout d'item.)
+  // L'identifiant utilise par les endpoints /items et /search est le nom (id === name).
+  const created = body.collection ?? body;
+
   // Petite pause pour laisser Vultr indexer la nouvelle collection avant qu'on y ajoute un item.
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  return body.id;
+  return created.id ?? created.name ?? name;
 }
 
 // S'assure qu'une collection existe pour ce scope : la reutilise si presente, la cree sinon.
