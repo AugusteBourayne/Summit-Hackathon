@@ -35,11 +35,6 @@ const glowVariants = {
   },
 };
 
-const navGlowVariants = {
-  initial: { opacity: 0 },
-  hover: { opacity: 1, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] as const } },
-};
-
 const sharedTransition = { type: "spring" as const, stiffness: 100, damping: 20, duration: 0.5 };
 
 export function GlassMenuBar({
@@ -50,19 +45,7 @@ export function GlassMenuBar({
   activeHref: string;
 }) {
   return (
-    <motion.nav
-      className="glass relative overflow-hidden rounded-2xl p-2 shadow-[0_1px_2px_rgba(15,15,20,0.04),0_8px_24px_-8px_rgba(15,15,20,0.12)]"
-      initial="initial"
-      whileHover="hover"
-    >
-      <motion.div
-        className="pointer-events-none absolute -inset-2 z-0 rounded-3xl"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(124,92,255,0.18) 10%, rgba(236,72,153,0.14) 50%, rgba(6,182,212,0.14) 90%, transparent 100%)",
-        }}
-        variants={navGlowVariants}
-      />
+    <nav className="glass relative overflow-hidden rounded-2xl p-2 shadow-[0_1px_2px_rgba(15,15,20,0.04),0_8px_24px_-8px_rgba(15,15,20,0.12)]">
       <ul className="relative z-10 flex items-center gap-1">
         {items.map((item) => {
           const Icon = item.icon;
@@ -117,6 +100,6 @@ export function GlassMenuBar({
           );
         })}
       </ul>
-    </motion.nav>
+    </nav>
   );
 }

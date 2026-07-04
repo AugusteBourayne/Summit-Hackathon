@@ -40,7 +40,7 @@ export default function TeamSettings() {
         <div>
           <label className="text-sm font-medium">Company name</label>
           <input
-            className="mt-1.5 w-full rounded-xl border border-white/10 bg-surface-2 px-4 py-2.5 text-sm outline-none focus:border-accent/50"
+            className="mt-1.5 w-full rounded-xl border border-black/10 bg-surface-2 px-4 py-2.5 text-sm outline-none focus:border-accent/50"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -48,7 +48,7 @@ export default function TeamSettings() {
         <div>
           <label className="text-sm font-medium">What the company does</label>
           <textarea
-            className="mt-1.5 h-28 w-full rounded-xl border border-white/10 bg-surface-2 px-4 py-2.5 text-sm outline-none focus:border-accent/50"
+            className="mt-1.5 h-28 w-full rounded-xl border border-black/10 bg-surface-2 px-4 py-2.5 text-sm outline-none focus:border-accent/50"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -56,12 +56,12 @@ export default function TeamSettings() {
         <div>
           <label className="text-sm font-medium">How the product works</label>
           <textarea
-            className="mt-1.5 h-28 w-full rounded-xl border border-white/10 bg-surface-2 px-4 py-2.5 text-sm outline-none focus:border-accent/50"
+            className="mt-1.5 h-28 w-full rounded-xl border border-black/10 bg-surface-2 px-4 py-2.5 text-sm outline-none focus:border-accent/50"
             value={product}
             onChange={(e) => setProduct(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-3 border-t border-white/5 pt-4">
+        <div className="flex items-center gap-3 border-t border-black/5 pt-4">
           <button
             onClick={save}
             disabled={saving}
@@ -76,7 +76,7 @@ export default function TeamSettings() {
       <h2 className="mt-12 text-sm font-semibold uppercase tracking-wider text-muted">
         Members
       </h2>
-      <div className="card mt-3 divide-y divide-white/5">
+      <div className="card mt-3 divide-y divide-black/5">
         {team.members.map((member) => (
           <div key={member.id} className="flex items-center gap-4 p-4">
             <Avatar id={member.id} name={member.name} size="sm" />

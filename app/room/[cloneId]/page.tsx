@@ -83,7 +83,7 @@ export default function InteractionRoom({
           </div>
           <Link
             href={`/clone/${cloneId}`}
-            className="rounded-full border border-white/10 px-4 py-1.5 text-sm text-muted hover:text-foreground"
+            className="rounded-full border border-black/10 px-4 py-1.5 text-sm text-muted hover:text-foreground"
           >
             End meeting
           </Link>
@@ -116,7 +116,7 @@ export default function InteractionRoom({
             </button>
             <button
               onClick={() => setTypedMode(!typedMode)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 text-muted hover:text-foreground"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 text-muted hover:text-foreground"
               title="Type instead"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -130,7 +130,7 @@ export default function InteractionRoom({
             <div className="flex w-full max-w-md gap-2">
               <input
                 autoFocus
-                className="flex-1 rounded-full border border-white/10 bg-surface px-4 py-2.5 text-sm outline-none focus:border-accent/50"
+                className="flex-1 rounded-full border border-black/10 bg-surface px-4 py-2.5 text-sm outline-none focus:border-accent/50"
                 placeholder="Type what you'd say..."
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
@@ -147,7 +147,7 @@ export default function InteractionRoom({
 
         {/* Transcript */}
         {transcript.length > 0 && (
-          <div className="mt-6 max-h-40 w-full space-y-1.5 overflow-y-auto border-t border-white/5 pt-4 text-sm">
+          <div className="mt-6 max-h-40 w-full space-y-1.5 overflow-y-auto border-t border-black/5 pt-4 text-sm">
             {transcript.map((turn, i) => (
               <p key={i} className={turn.role === "user" ? "text-muted" : ""}>
                 <span className="mr-2 font-mono text-[10px] uppercase text-muted">

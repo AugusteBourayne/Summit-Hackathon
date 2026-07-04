@@ -1,17 +1,23 @@
+"use client";
+
+import { use } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { getClone, team } from "@/lib/team";
+import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 
-export default async function CloneProfile({
+export default function CloneProfile({
   params,
 }: {
   params: Promise<{ cloneId: string }>;
 }) {
-  const { cloneId } = await params;
+  const { cloneId } = use(params);
   const clone = getClone(cloneId);
-  if (!clone) notFound();
+  const { currentUserId } = useCurrentUser();
+  const isSelf = cloneId === currentUserId;
+
+  if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
 
   const interactions = [
     {
@@ -78,12 +84,17 @@ export default async function CloneProfile({
             </Link>
           ))}
         </div>
-        {!clone.trained && (
+        {!clone.trained && isSelf && (
           <p className="mt-3 text-sm text-muted">
             This clone hasn&apos;t been trained yet.{" "}
             <Link href={`/training/${cloneId}`} className="text-accent hover:underline">
               Start training →
             </Link>
+          </p>
+        )}
+        {!clone.trained && !isSelf && (
+          <p className="mt-3 text-sm text-muted">
+            This clone hasn&apos;t been trained yet. Only {clone.name.split(" ")[0]} can train it.
           </p>
         )}
       </section>
@@ -99,17 +110,19 @@ export default async function CloneProfile({
               {team.company.name} — {team.company.description}
             </p>
           </div>
-          <div className="border-t border-white/5 pt-4">
+          <div className="border-t border-black/5 pt-4">
             <h3 className="font-medium">Behavioral profile</h3>
             <p className="mt-1 text-muted">
               {clone.personaProfile || "Empty — will be built from documents and interviews."}
             </p>
           </div>
-          <div className="border-t border-white/5 pt-4">
-            <Link href={`/training/${cloneId}`} className="text-accent hover:underline">
-              Add documents or run an interview →
-            </Link>
-          </div>
+          {isSelf && (
+            <div className="border-t border-black/5 pt-4">
+              <Link href={`/training/${cloneId}`} className="text-accent hover:underline">
+                Add documents or run an interview →
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

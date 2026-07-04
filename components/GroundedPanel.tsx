@@ -9,7 +9,7 @@ export function GroundedPanel({ data }: { data: AskResponse }) {
         </h3>
         <ul className="space-y-2">
           {data.citations.map((citation, i) => (
-            <li key={i} className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+            <li key={i} className="rounded-lg border border-black/5 bg-black/[0.03] p-3">
               <p className="text-foreground/90">&ldquo;{citation.text}&rdquo;</p>
               <p className="mt-1 font-mono text-[11px] text-muted">{citation.source}</p>
             </li>

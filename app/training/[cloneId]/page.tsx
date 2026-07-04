@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { getClone } from "@/lib/team";
+import { useCurrentUser } from "@/lib/currentUser";
 import { useRecorder } from "@/lib/useRecorder";
 import { Avatar } from "@/components/Avatar";
 import questions from "@/seed/interview_questions.json";
@@ -17,6 +18,7 @@ export default function TrainingStudio({
 }) {
   const { cloneId } = use(params);
   const clone = getClone(cloneId);
+  const { currentUserId } = useCurrentUser();
   const recorder = useRecorder();
 
   const [docs, setDocs] = useState<UploadedDoc[]>([]);
@@ -30,6 +32,24 @@ export default function TrainingStudio({
   const [cloningVoice, setCloningVoice] = useState(false);
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
+
+  if (cloneId !== currentUserId) {
+    return (
+      <main className="mx-auto w-full max-w-md flex-1 px-6 py-24 text-center">
+        <p className="text-4xl">🔒</p>
+        <h1 className="mt-4 text-lg font-semibold">You can only train your own clone</h1>
+        <p className="mt-2 text-sm text-muted">
+          {`${clone.name} needs to sign in themselves to train their clone — that's what keeps every profile consensual and accurate.`}
+        </p>
+        <Link
+          href={`/training/${currentUserId}`}
+          className="mt-6 inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white"
+        >
+          Train my own clone →
+        </Link>
+      </main>
+    );
+  }
 
   const progress = [
     { label: "Documents", done: docs.length > 0 },
@@ -109,7 +129,7 @@ export default function TrainingStudio({
         {progress.map((stage) => (
           <div key={stage.label} className="flex-1">
             <div
-              className={`h-1.5 rounded-full ${stage.done ? "bg-accent" : "bg-white/10"}`}
+              className={`h-1.5 rounded-full ${stage.done ? "bg-accent" : "bg-black/10"}`}
             />
             <p className={`mt-1.5 text-xs ${stage.done ? "text-accent" : "text-muted"}`}>
               {stage.done ? "✓ " : ""}{stage.label}
@@ -134,14 +154,14 @@ export default function TrainingStudio({
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           className={`mt-4 rounded-xl border-2 border-dashed p-8 text-center text-sm transition-colors ${
-            dragOver ? "border-accent bg-accent-soft" : "border-white/10 text-muted"
+            dragOver ? "border-accent bg-accent-soft" : "border-black/10 text-muted"
           }`}
         >
           Drop .txt / .md files here
         </div>
 
         <textarea
-          className="mt-3 h-24 w-full rounded-xl border border-white/10 bg-surface-2 p-3 text-sm outline-none placeholder:text-muted focus:border-accent/50"
+          className="mt-3 h-24 w-full rounded-xl border border-black/10 bg-surface-2 p-3 text-sm outline-none placeholder:text-muted focus:border-accent/50"
           placeholder="...or paste a transcript directly"
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
@@ -153,13 +173,13 @@ export default function TrainingStudio({
             setPasted("");
           }}
           disabled={!pasted.trim()}
-          className="mt-2 rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/15 disabled:opacity-40"
+          className="mt-2 rounded-full bg-black/10 px-4 py-2 text-sm hover:bg-black/15 disabled:opacity-40"
         >
           Add to knowledge
         </button>
 
         {docs.length > 0 && (
-          <ul className="mt-4 space-y-1.5 border-t border-white/5 pt-4 text-sm">
+          <ul className="mt-4 space-y-1.5 border-t border-black/5 pt-4 text-sm">
             {docs.map((doc, i) => (
               <li key={i} className="flex justify-between text-muted">
                 <span>📄 {doc.name}</span>
@@ -207,7 +227,7 @@ export default function TrainingStudio({
                 </svg>
               </button>
               <input
-                className="flex-1 rounded-full border border-white/10 bg-surface-2 px-4 py-2.5 text-sm outline-none placeholder:text-muted focus:border-accent/50"
+                className="flex-1 rounded-full border border-black/10 bg-surface-2 px-4 py-2.5 text-sm outline-none placeholder:text-muted focus:border-accent/50"
                 placeholder="Hold the mic, or type your answer..."
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
@@ -216,7 +236,7 @@ export default function TrainingStudio({
               <button
                 onClick={() => submitAnswer(answer)}
                 disabled={!answer.trim()}
-                className="rounded-full bg-white/10 px-4 text-sm hover:bg-white/15 disabled:opacity-40"
+                className="rounded-full bg-black/10 px-4 text-sm hover:bg-black/15 disabled:opacity-40"
               >
                 Next
               </button>

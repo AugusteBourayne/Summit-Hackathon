@@ -1,9 +1,9 @@
 const variants = {
   trained: "bg-accent-soft text-accent",
-  untrained: "bg-white/5 text-muted",
+  untrained: "bg-black/5 text-muted",
   consent: "bg-emerald-500/10 text-emerald-400",
   voice: "bg-cyan-500/10 text-cyan-400",
-  soon: "bg-white/5 text-muted",
+  soon: "bg-black/5 text-muted",
 };
 
 export function Badge({

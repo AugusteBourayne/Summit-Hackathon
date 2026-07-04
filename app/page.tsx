@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { MessageSquare, Mic, Hash } from "lucide-react";
 import { team, clones } from "@/lib/team";
+import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 
@@ -41,6 +44,7 @@ function RowAction({
 }
 
 export default function Home() {
+  const { currentUserId } = useCurrentUser();
   const trainedCount = team.members.filter((m) => clones[m.id]?.trained).length;
 
   return (
@@ -56,6 +60,7 @@ export default function Home() {
         {team.members.map((member) => {
           const clone = clones[member.id];
           if (!clone) return null;
+          const isSelf = member.id === currentUserId;
           return (
             <div key={member.id} className="flex items-center gap-3 p-3.5">
               <Link href={`/clone/${member.id}`} className="flex min-w-0 flex-1 items-center gap-3">
@@ -69,18 +74,22 @@ export default function Home() {
                       }`}
                       title={clone.trained ? "trained" : "not trained"}
                     />
+                    {isSelf && <Badge variant="soon">you</Badge>}
                   </div>
                   <p className="truncate text-sm text-muted">{member.role}</p>
                 </div>
               </Link>
 
-              {!clone.trained && (
+              {!clone.trained && isSelf && (
                 <Link
                   href={`/training/${member.id}`}
                   className="hidden shrink-0 text-xs text-accent hover:underline sm:inline"
                 >
                   Train →
                 </Link>
+              )}
+              {!clone.trained && !isSelf && (
+                <span className="hidden shrink-0 text-xs text-muted/70 sm:inline">Not trained</span>
               )}
 
               <div className="flex shrink-0 items-center gap-0.5">
@@ -101,6 +110,7 @@ export default function Home() {
 
       <p className="mt-4 flex items-center gap-1.5 text-xs text-muted">
         <Badge variant="consent">✓</Badge> Every clone here was created with its owner&apos;s consent.
+        Only its owner can train it.
       </p>
     </main>
   );

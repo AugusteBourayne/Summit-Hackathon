@@ -39,7 +39,7 @@ export default function Chat({ params }: { params: Promise<{ cloneId: string }> 
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8">
-      <div className="mb-6 flex items-center gap-3 border-b border-white/5 pb-4">
+      <div className="mb-6 flex items-center gap-3 border-b border-black/5 pb-4">
         <Link href={`/clone/${cloneId}`}>
           <Avatar id={cloneId} name={clone.name} size="md" />
         </Link>
@@ -107,7 +107,7 @@ export default function Chat({ params }: { params: Promise<{ cloneId: string }> 
 
       <div className="sticky bottom-0 mt-6 flex gap-2 bg-background pb-6 pt-2">
         <input
-          className="flex-1 rounded-full border border-white/10 bg-surface px-5 py-3 text-sm outline-none placeholder:text-muted focus:border-accent/50"
+          className="flex-1 rounded-full border border-black/10 bg-surface px-5 py-3 text-sm outline-none placeholder:text-muted focus:border-accent/50"
           placeholder={`Ask ${clone.name.split(" ")[0]}'s clone anything...`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
