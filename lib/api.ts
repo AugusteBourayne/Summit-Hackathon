@@ -51,4 +51,8 @@ export const api = {
 
   saveBehaviors: (cloneId: string, profile: CloneProfile) =>
     post<CloneProfile>(`/api/clones/${cloneId}/behaviors`, profile),
+
+  // Identité éditable d'un clone : nom d'affichage + avatar (data URL uploadé).
+  saveProfile: (cloneId: string, patch: { name?: string; avatar?: string }) =>
+    post<{ name?: string; avatar?: string }>(`/api/clones/${cloneId}/profile`, patch),
 };

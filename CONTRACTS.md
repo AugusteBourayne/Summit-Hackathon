@@ -85,6 +85,17 @@ brancher côté backend :
    servir. `personaProfile` reste dans le seed pour compat, mais `summary`+`behaviors` sont la
    nouvelle source de vérité du comportement.
 
+### `POST /api/clones/:cloneId/profile`
+Identité éditable d'un clone : nom d'affichage + avatar. La personne peut, depuis son propre
+profil, changer son **nom** et **uploader une photo**.
+```ts
+// Request (= Response) — champs optionnels, patch partiel
+{ name?: string, avatar?: string /* data URL base64 pour un upload */ }
+```
+**TODO(backend)** — route mockée (echo) ; côté frontend l'édition est déjà persistée en
+localStorage pour la démo. À faire : persister `name`/`avatar` (l'avatar arrive en data URL,
+à stocker ou pousser vers un bucket puis ne garder que l'URL).
+
 ## Fichiers de seed (`/seed`)
 
 - `team.json` — `{ company: { name, description, product }, members: [{ id, name, role, consent }] }`

@@ -1,4 +1,7 @@
+"use client";
+
 import { avatarGradient, initials } from "@/lib/team";
+import { useProfileOverrides } from "@/lib/profileOverrides";
 
 const sizes = {
   sm: "h-9 w-9 text-xs",
@@ -24,16 +27,15 @@ export function Avatar({
   name: string;
   size?: keyof typeof sizes;
 }) {
-  const photo = photoAvatars[id];
-  if (photo) {
+  const { overrides } = useProfileOverrides();
+  const customAvatar = overrides[id]?.avatar;
+  const src = customAvatar ?? (photoAvatars[id] ? `/avatars/${photoAvatars[id]}.png` : null);
+
+  if (src) {
     return (
       <div className={`relative shrink-0 overflow-hidden rounded-full ${sizes[size]}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/avatars/${photo}.png`}
-          alt={name}
-          className="h-full w-full object-cover"
-        />
+        <img src={src} alt={name} className="h-full w-full object-cover" />
       </div>
     );
   }

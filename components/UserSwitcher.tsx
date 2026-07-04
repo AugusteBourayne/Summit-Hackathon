@@ -4,7 +4,34 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { team } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { Avatar } from "@/components/Avatar";
+
+function SwitcherRow({
+  id,
+  name,
+  active,
+  onSelect,
+}: {
+  id: string;
+  name: string;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const displayName = useDisplayName(id, name);
+  return (
+    <button
+      onClick={onSelect}
+      className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors ${
+        active ? "bg-accent-soft text-accent" : "hover:bg-black/[0.04]"
+      }`}
+    >
+      <Avatar id={id} name={displayName} size="sm" />
+      <span className="min-w-0 flex-1 truncate">{displayName}</span>
+      {active && <span className="text-xs">●</span>}
+    </button>
+  );
+}
 
 export function UserSwitcher() {
   const { currentUserId, setCurrentUserId } = useCurrentUser();
@@ -37,20 +64,16 @@ export function UserSwitcher() {
             Dev — switch profile
           </p>
           {team.members.map((member) => (
-            <button
+            <SwitcherRow
               key={member.id}
-              onClick={() => {
+              id={member.id}
+              name={member.name}
+              active={member.id === currentUserId}
+              onSelect={() => {
                 setCurrentUserId(member.id);
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors ${
-                member.id === currentUserId ? "bg-accent-soft text-accent" : "hover:bg-black/[0.04]"
-              }`}
-            >
-              <Avatar id={member.id} name={member.name} size="sm" />
-              <span className="min-w-0 flex-1 truncate">{member.name}</span>
-              {member.id === currentUserId && <span className="text-xs">●</span>}
-            </button>
+            />
           ))}
         </div>
       )}

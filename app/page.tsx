@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { team, clones, floatParams, Member } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { Avatar } from "@/components/Avatar";
 import { CloneModal } from "@/components/CloneModal";
 
@@ -18,6 +19,7 @@ function Bubble({
   onOpen: (id: string) => void;
 }) {
   const clone = clones[member.id];
+  const name = useDisplayName(member.id, member.name);
   if (!clone) return null;
   const fp = floatParams(member.id);
 
@@ -39,9 +41,9 @@ function Bubble({
             clone.trained ? "ring-accent/40" : "ring-transparent"
           }`}
         >
-          <Avatar id={member.id} name={member.name} size="xl" />
+          <Avatar id={member.id} name={name} size="xl" />
         </div>
-        <p className="mt-3 text-sm font-medium">{member.name}</p>
+        <p className="mt-3 text-sm font-medium">{name}</p>
         <p className="text-xs text-muted">{member.role.split(" ")[0]}</p>
       </button>
 
@@ -51,7 +53,7 @@ function Bubble({
             href={`/room/${member.id}`}
             className="rounded-full bg-accent-soft px-3 py-1 text-[11px] font-medium text-accent hover:bg-accent/20"
           >
-            Ask {member.name.split(" ")[0]} →
+            Ask {name.split(" ")[0]} →
           </Link>
         ) : member.id === currentUserId ? (
           <Link href={`/training/${member.id}`} className="text-[11px] text-accent">

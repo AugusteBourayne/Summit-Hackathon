@@ -2,13 +2,12 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { MessageSquare, Sparkles } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { getClone, team } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
-import { Avatar } from "@/components/Avatar";
-import { Badge } from "@/components/Badge";
 import { SlackHint } from "@/components/Slack";
 import { BehaviorProfile } from "@/components/BehaviorProfile";
+import { ProfileHeader } from "@/components/ProfileHeader";
 
 export default function CloneProfile({
   params,
@@ -25,29 +24,12 @@ export default function CloneProfile({
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-      <div className="flex items-center gap-6">
-        <Avatar id={cloneId} name={clone.name} size="xl" />
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold">{clone.name}</h1>
-          <p className="text-muted">{clone.role} · {team.company.name}</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <Badge variant={clone.trained ? "trained" : "untrained"}>
-              {clone.trained ? "● trained" : "○ not trained"}
-            </Badge>
-            <Badge variant="consent">✓ consent given</Badge>
-            {clone.voiceId && <Badge variant="voice">voice ready</Badge>}
-          </div>
-        </div>
-        {isSelf && (
-          <Link
-            href={`/training/${cloneId}`}
-            className="flex shrink-0 items-center gap-2 self-start rounded-full border border-black/10 px-4 py-2 text-sm font-medium hover:bg-black/[0.03]"
-          >
-            <Sparkles className="h-4 w-4 text-pink-600" />
-            {clone.trained ? "Enrich clone" : "Train clone"}
-          </Link>
-        )}
-      </div>
+      <ProfileHeader
+        cloneId={cloneId}
+        clone={clone}
+        isSelf={isSelf}
+        companyName={team.company.name}
+      />
 
       <section className="mt-10">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
