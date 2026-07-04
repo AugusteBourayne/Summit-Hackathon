@@ -8,8 +8,6 @@ import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
 import { CloneModal } from "@/components/CloneModal";
 
-const PRIMARY_IDS = ["claire-dumont", "employe-demo", "second-clone-demo"];
-
 function Bubble({
   member,
   currentUserId,
@@ -71,12 +69,12 @@ export default function Home() {
   const { currentUserId } = useCurrentUser();
   const [openId, setOpenId] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
-  const trainedCount = team.members.filter((m) => clones[m.id]?.trained).length;
 
-  const primary = PRIMARY_IDS.map((id) => team.members.find((m) => m.id === id)).filter(
-    (m): m is Member => !!m,
-  );
-  const rest = team.members.filter((m) => !PRIMARY_IDS.includes(m.id));
+  // On ne montre jamais son propre profil dans l'équipe : uniquement les coéquipiers.
+  const others = team.members.filter((m) => m.id !== currentUserId);
+  const trainedCount = others.filter((m) => clones[m.id]?.trained).length;
+  const primary = others.slice(0, 3);
+  const rest = others.slice(3);
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-14">
@@ -130,7 +128,7 @@ export default function Home() {
       )}
 
       <p className="mt-16 text-center text-xs text-muted/70">
-        {trainedCount} of {team.members.length} clones trained
+        {trainedCount} of {others.length} teammate clones trained
       </p>
     </main>
   );

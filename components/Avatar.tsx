@@ -12,6 +12,7 @@ const photoAvatars: Record<string, string> = {
   "claire-dumont": "elena",
   "employe-demo": "raphael",
   "second-clone-demo": "geraud",
+  "lea-fontaine": "auguste",
 };
 
 export function Avatar({

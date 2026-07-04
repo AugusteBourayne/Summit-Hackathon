@@ -38,5 +38,14 @@
     "summary": "",
     "behaviors": [],
     "personaProfile": ""
+  },
+  "lea-fontaine": {
+    "name": "Léa Fontaine",
+    "role": "Head of Customer Success",
+    "voiceId": null,
+    "trained": false,
+    "summary": "",
+    "behaviors": [],
+    "personaProfile": ""
   }
 }

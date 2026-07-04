@@ -7,6 +7,7 @@
   "members": [
     { "id": "claire-dumont", "name": "Claire Dumont", "role": "Head of Product", "consent": true },
     { "id": "employe-demo", "name": "Utilisateur Démo", "role": "Product Owner", "consent": true },
-    { "id": "second-clone-demo", "name": "Marc Lefevre", "role": "Engineering Manager", "consent": true }
+    { "id": "second-clone-demo", "name": "Marc Lefevre", "role": "Engineering Manager", "consent": true },
+    { "id": "lea-fontaine", "name": "Léa Fontaine", "role": "Head of Customer Success", "consent": true }
   ]
 }
