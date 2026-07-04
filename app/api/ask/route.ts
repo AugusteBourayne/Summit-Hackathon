@@ -28,20 +28,13 @@ export async function POST(req: NextRequest) {
     const agentPlan = await plan(body.text, body.mode);
     steps.push(`planned: ${agentPlan.requestType}`);
 
-    // --- Etape 2 : Retrieve corpus personnel du clone ---
-    let personalChunks: RetrievedChunk[] = [];
-    if (agentPlan.usePersonalCorpus) {
-      personalChunks = await retrieve(`personal:${body.cloneId}`, body.text, 3);
-      steps.push(`retrieved ${personalChunks.length} personal docs`);
-    }
+    // --- Etape 2 : Retrieve corpus personnel du clone (toujours consulte pour fiabilite) ---
+    const personalChunks: RetrievedChunk[] = await retrieve(`personal:${body.cloneId}`, body.text, 3);
+    steps.push(`retrieved ${personalChunks.length} personal docs`);
 
-    // --- Etape 3 : Retrieve corpus entreprise ---
-    let teamChunks: RetrievedChunk[] = [];
-    if (agentPlan.useTeamCorpus) {
-      teamChunks = await retrieve("team", body.text, 3);
-      steps.push(`retrieved ${teamChunks.length} company docs`);
-    }
-
+    // --- Etape 3 : Retrieve corpus entreprise (toujours consulte pour fiabilite) ---
+    const teamChunks: RetrievedChunk[] = await retrieve("team", body.text, 3);
+    steps.push(`retrieved ${teamChunks.length} company docs`);
     // --- Etape 4 : Outils simules (agenda + projets) ---
     let toolsContext = "(outils non consultes)";
     if (agentPlan.useTools) {

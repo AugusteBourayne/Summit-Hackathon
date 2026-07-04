@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as IngestBody;
 
     // Validation minimale : on refuse une requete sans contenu exploitable.
-    if (!body.content || body.content.trim().length === 0) {
-      return NextResponse.json(
+// On verifie que content est une chaine non vide. Si ce n'est pas une string
+    // (objet mal transmis, valeur nulle...), on refuse proprement sans planter.
+    if (typeof body.content !== "string" || body.content.trim().length === 0) {      return NextResponse.json(
         { error: "Le champ 'content' est vide." },
         { status: 400 }
       );

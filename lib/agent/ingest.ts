@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 // URL de base de l'API Vultr Inference (compatible OpenAI pour le chat, endpoints maison pour le vector store).
-const VULTR_BASE = "https://api.vultrinference.com/v1";
+const VULTR_BASE = process.env.VULTR_INFERENCE_BASE_URL ?? "https://api.vultrinference.com/v1";
 
 // Recupere la cle depuis les variables d'environnement chargees par Next.js (.env.local).
 function getApiKey(): string {
@@ -69,11 +69,14 @@ async function createCollection(name: string): Promise<string> {
     body: JSON.stringify({ name }),
   });
   if (!res.ok) {
-    // On lit le corps de la reponse Vultr pour connaitre la raison exacte du refus.
     const detail = await res.text();
     throw new Error(`Echec creation collection Vultr: ${res.status} - ${detail}`);
   }
   const body = await res.json();
+
+  // Petite pause pour laisser Vultr indexer la nouvelle collection avant qu'on y ajoute un item.
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
   return body.id;
 }
 
