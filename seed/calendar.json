@@ -1,8 +1,9 @@
 {
-  "elena": [
-    { "date": "2026-07-06", "title": "Atlas release go/no-go review", "busy": true },
-    { "date": "2026-07-07", "title": "1:1s with the backend squad", "busy": true },
-    { "date": "2026-07-08", "title": "Client demo — Carrefour pilot", "busy": true },
-    { "date": "2026-07-10", "title": "Free slot (afternoon)", "busy": false }
+  "claire-dumont": [
+    { "date": "2026-07-06", "title": "Point sprint notifications" },
+    { "date": "2026-07-08", "title": "Réunion priorisation équipe" },
+    { "date": "2026-07-09", "title": "Point avancement Salesforce" },
+    { "date": "2026-07-15", "title": "Démo client — ne pas déplacer" },
+    { "date": "2026-07-25", "title": "Release v2.4 — deadline priorité absolue" }
   ]
 }

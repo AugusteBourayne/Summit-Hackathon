@@ -1,18 +1,12 @@
 {
   "company": {
-    "name": "Lumora",
-    "description": "Lumora is a B2B SaaS that helps retail chains forecast inventory with AI. 40-person team, Series A, based in Paris. Current top priority: shipping the 'Atlas' release on July 15 for our two biggest enterprise clients.",
-    "product": "A web platform that ingests sales and logistics data, runs demand forecasting models, and gives store managers daily restocking recommendations. The Atlas release adds multi-warehouse support — it is the deadline everyone is working toward."
+    "name": "Flowbridge",
+    "description": "SaaS B2B fictive : outil de gestion de projet et de suivi de release pour équipes tech de 20 à 200 personnes. Priorité du trimestre : tenir la deadline de release v2.4 tout en réduisant la dette technique du module notifications.",
+    "product": "Flowbridge combine tracker de tickets, changelog automatique et alertes de deadline. Produit phare du trimestre : la v2.4, avec intégration Salesforce native."
   },
   "members": [
-    { "id": "elena", "name": "Elena Marchetti", "role": "Engineering Manager", "consent": true },
-    { "id": "raphael", "name": "Raphaël", "role": "Product & Frontend", "consent": true },
-    { "id": "geraud", "name": "Géraud", "role": "Backend Engineer", "consent": true },
-    { "id": "auguste", "name": "Auguste", "role": "Data & Growth", "consent": true },
-    { "id": "marta", "name": "Marta Kowalski", "role": "Sales Lead", "consent": true },
-    { "id": "david", "name": "David Chen", "role": "Customer Success", "consent": true },
-    { "id": "sofia", "name": "Sofia Rossi", "role": "Data Scientist", "consent": true },
-    { "id": "tom", "name": "Tom Williams", "role": "DevOps Engineer", "consent": true },
-    { "id": "aisha", "name": "Aisha Bakr", "role": "Design Lead", "consent": true }
+    { "id": "claire-dumont", "name": "Claire Dumont", "role": "Head of Product", "consent": true },
+    { "id": "employe-demo", "name": "Utilisateur Démo", "role": "Product Owner", "consent": true },
+    { "id": "second-clone-demo", "name": "Marc Lefevre", "role": "Engineering Manager", "consent": true }
   ]
 }

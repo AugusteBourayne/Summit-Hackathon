@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cloneVoice } from "@/lib/voice/clone";
 
-// TODO(Auguste): remplacer ce mock par le vrai appel Gradium Voice Cloning (voir /lib/voice et /CONTRACTS.md).
-
-export async function POST(_req: NextRequest) {
-  return NextResponse.json({ voiceId: `mock-voice-${Date.now()}` });
+export async function POST(req: NextRequest) {
+  const { audioSample, name } = (await req.json()) as { audioSample: string; name?: string };
+  const voiceId = await cloneVoice(audioSample, name);
+  return NextResponse.json({ voiceId });
 }

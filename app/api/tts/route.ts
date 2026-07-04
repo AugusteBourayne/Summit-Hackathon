@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// TODO(Auguste): remplacer ce mock par le vrai appel Gradium TTS (voir /lib/voice et /CONTRACTS.md).
+import { synthesizeSpeech } from "@/lib/voice/tts";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { voiceId } = body as { text: string; voiceId: string | null };
-
-  return NextResponse.json({
-    audioUrl: voiceId ? `/mock-audio/${voiceId}.mp3` : "/mock-audio/default.mp3",
-  });
+  const { text, voiceId } = (await req.json()) as { text: string; voiceId: string | null };
+  const audioUrl = await synthesizeSpeech(text, voiceId);
+  return NextResponse.json({ audioUrl });
 }

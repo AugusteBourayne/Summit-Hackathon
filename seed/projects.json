@@ -1,7 +1,7 @@
 {
-  "elena": [
-    { "name": "Atlas release (multi-warehouse)", "deadline": "2026-07-15", "status": "at risk" },
-    { "name": "Forecast API v2 migration", "deadline": "2026-08-30", "status": "on track" },
-    { "name": "Onboarding revamp", "deadline": "2026-09-15", "status": "paused" }
+  "claire-dumont": [
+    { "name": "Intégration Salesforce (v2.4)", "status": "en retard de 2 jours" },
+    { "name": "Réduction dette technique notifications", "status": "en cours, dans les temps" },
+    { "name": "Export PDF", "status": "en attente, prévu pour v2.5" }
   ]
 }
