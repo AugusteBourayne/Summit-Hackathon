@@ -51,18 +51,14 @@ function hashOf(id: string): number {
   return hash;
 }
 
-// Paramètres de flottement pseudo-aléatoires mais stables par personne. La position (x/y) et
-// la rotation ont chacune leur propre durée/délai, volontairement pas multiples l'une de
-// l'autre : les deux dérivent, se déphasent en continu, et ne retombent jamais en boucle
-// synchronisée avec les autres bulles — plus "anarchique" qu'une simple vague.
+// Paramètres de flottement pseudo-aléatoires mais stables par personne : juste la durée et le
+// délai varient (dérivés de l'id), pour que chaque bulle flotte verticalement à son propre
+// rythme sans jamais former une vague synchronisée avec les autres. Amplitude volontairement
+// petite — c'est un frémissement discret, pas une animation qu'on remarque.
 export function floatParams(id: string) {
   const h = hashOf(id);
-  const duration = 4.3 + ((h >> 2) % 7) * 0.45; // 4.3s → 7.3s
+  const duration = 4.5 + ((h >> 2) % 5) * 0.4; // 4.5s → 6.1s
   const delay = -((h >> 5) % 50) / 10; // démarre "en cours de route", jamais synchronisé
-  const durationRot = 3.6 + ((h >> 9) % 6) * 0.55; // 3.6s → 6.7s, indépendant de duration
-  const delayRot = -((h >> 14) % 45) / 10;
-  const x = (((h >> 8) % 7) - 3) * 4; // -12px → 12px
-  const y = 8 + ((h >> 11) % 5) * 2.5; // 8px → 18px
-  const rot = 1.5 + ((h >> 13) % 3) * 0.8; // 1.5deg → 3.1deg
-  return { duration, delay, durationRot, delayRot, x, y, rot };
+  const y = 4 + ((h >> 11) % 3); // 4px → 6px
+  return { duration, delay, y };
 }

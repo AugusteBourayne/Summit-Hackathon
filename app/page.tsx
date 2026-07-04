@@ -34,7 +34,6 @@ export default function Home() {
           const clone = clones[member.id];
           if (!clone) return null;
           const fp = floatParams(member.id);
-          const flip = member.id.charCodeAt(0) % 2 === 0;
 
           return (
             <div key={member.id} className="group flex w-24 flex-col items-center">
@@ -45,11 +44,7 @@ export default function Home() {
                   {
                     "--float-duration": `${fp.duration}s`,
                     "--float-delay": `${fp.delay}s`,
-                    "--float-duration-rot": `${fp.durationRot}s`,
-                    "--float-delay-rot": `${fp.delayRot}s`,
-                    "--float-x": `${fp.x}px`,
                     "--float-y": `${-fp.y}px`,
-                    "--float-rot": `${fp.rot}deg`,
                   } as React.CSSProperties
                 }
               >
@@ -57,13 +52,6 @@ export default function Home() {
                   className={`bubble-nudge rounded-full ring-2 ring-offset-4 ring-offset-background ${
                     clone.trained ? "ring-accent/40" : "ring-transparent"
                   }`}
-                  style={
-                    {
-                      "--nudge-scale": 1.16,
-                      "--nudge-x": flip ? "-4px" : "4px",
-                      "--nudge-rot": flip ? "-5deg" : "5deg",
-                    } as React.CSSProperties
-                  }
                 >
                   <Avatar id={member.id} name={member.name} size="xl" />
                 </div>
