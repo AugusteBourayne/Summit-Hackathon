@@ -156,6 +156,12 @@ export default function TrainingStudio({
     }
   }
 
+  function redoVoice() {
+    setVoiceId(null);
+    setAnswerAudios([]);
+    setVoiceCloneError(null);
+  }
+
   async function createVoice() {
     setCloningVoice(true);
     setVoiceCloneError(null);
@@ -338,9 +344,17 @@ export default function TrainingStudio({
         </p>
 
         {voiceId ? (
-          <p className="mt-4 rounded-xl bg-cyan-500/10 p-4 text-sm text-cyan-600">
-            ✓ Voice ready — <span className="font-mono text-xs">{voiceId}</span>
-          </p>
+          <>
+            <p className="mt-4 rounded-xl bg-cyan-500/10 p-4 text-sm text-cyan-600">
+              ✓ Voice ready — <span className="font-mono text-xs">{voiceId}</span>
+            </p>
+            <button
+              onClick={redoVoice}
+              className="mt-3 text-sm text-muted hover:text-foreground"
+            >
+              Re-record voice →
+            </button>
+          </>
         ) : (
           <>
             <div className="mt-4 flex items-center gap-3">
