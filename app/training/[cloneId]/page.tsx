@@ -131,6 +131,16 @@ export default function TrainingStudio({
     setAnswer(text);
   }
 
+  // Bascule clic pour démarrer / clic pour arrêter — plus fiable qu'un "maintenir enfoncé"
+  // sur trackpad.
+  async function toggleMic() {
+    if (recorder.recording) {
+      await releaseMic();
+    } else {
+      await recorder.start();
+    }
+  }
+
   async function createVoice() {
     setCloningVoice(true);
     try {
@@ -259,19 +269,17 @@ export default function TrainingStudio({
 
             <div className="mt-3 flex gap-2">
               <button
-                onPointerDown={() => recorder.start()}
-                onPointerUp={releaseMic}
-                onPointerLeave={() => recorder.recording && releaseMic()}
+                onClick={toggleMic}
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all ${
                   recorder.recording ? "scale-110 bg-red-500" : "bg-accent hover:scale-105"
                 } text-white`}
-                title="Hold to answer by voice"
+                title={recorder.recording ? "Click to stop" : "Click to answer by voice"}
               >
                 <Mic className="h-5 w-5" />
               </button>
               <input
                 className="flex-1 rounded-full border border-black/10 bg-surface-2 px-4 py-2.5 text-sm outline-none placeholder:text-muted focus:border-accent/50"
-                placeholder="Hold the mic, or type your answer..."
+                placeholder="Click the mic, or type your answer..."
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submitAnswer(answer)}

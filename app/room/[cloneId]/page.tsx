@@ -115,6 +115,16 @@ export default function AskClone({
     }
   }
 
+  // Bascule clic pour démarrer / clic pour arrêter — plus fiable qu'un "maintenir enfoncé"
+  // sur trackpad, où un clic précis de plusieurs secondes est difficile à tenir.
+  async function toggleMic() {
+    if (recorder.recording) {
+      await releaseMic();
+    } else {
+      await pressMic();
+    }
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 gap-6 px-6 py-6">
       {/* Colonne conversation */}
@@ -253,17 +263,15 @@ export default function AskClone({
 
             <input
               className="min-w-0 flex-1 rounded-full border border-black/10 bg-surface px-5 py-3 text-sm outline-none placeholder:text-muted focus:border-accent/50"
-              placeholder={`Message ${firstName}, or hold the mic to talk...`}
+              placeholder={`Message ${firstName}, or click the mic to talk...`}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send(input)}
             />
 
             <button
-              onPointerDown={pressMic}
-              onPointerUp={releaseMic}
-              onPointerLeave={() => recorder.recording && releaseMic()}
-              title="Hold to talk"
+              onClick={toggleMic}
+              title={recorder.recording ? "Click to stop" : "Click to talk"}
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all ${
                 recorder.recording ? "scale-110 bg-red-500 text-white" : "border border-black/10 text-muted hover:text-foreground"
               }`}
