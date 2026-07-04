@@ -97,6 +97,13 @@ export function CloneModal({
           )}
         </div>
 
+        <div className="mt-5 border-t border-black/5 pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+            Conversation history
+          </p>
+          <p className="mt-2 text-sm text-muted">No conversations yet.</p>
+        </div>
+
         {isSelf && (
           <Link
             href={`/training/${cloneId}`}
