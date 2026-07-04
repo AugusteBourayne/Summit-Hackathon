@@ -7,9 +7,27 @@ import { Avatar } from "@/components/Avatar";
 import { GlassMenuBar } from "@/components/GlassMenuBar";
 
 const links = [
-  { href: "/", label: "Team", icon: Users, glow: "#7c5cff" },
-  { href: "/training/raphael", label: "My clone", icon: Sparkles, glow: "#ec4899" },
-  { href: "/team", label: "Company", icon: Building2, glow: "#06b6d4" },
+  {
+    href: "/",
+    label: "Team",
+    icon: Users,
+    iconColor: "text-violet-600",
+    glow: "radial-gradient(circle, rgba(124,92,255,0.22) 0%, rgba(124,92,255,0.08) 50%, transparent 100%)",
+  },
+  {
+    href: "/training/raphael",
+    label: "My clone",
+    icon: Sparkles,
+    iconColor: "text-pink-600",
+    glow: "radial-gradient(circle, rgba(236,72,153,0.22) 0%, rgba(236,72,153,0.08) 50%, transparent 100%)",
+  },
+  {
+    href: "/team",
+    label: "Company",
+    icon: Building2,
+    iconColor: "text-cyan-600",
+    glow: "radial-gradient(circle, rgba(6,182,212,0.22) 0%, rgba(6,182,212,0.08) 50%, transparent 100%)",
+  },
 ];
 
 export function TopNav() {
