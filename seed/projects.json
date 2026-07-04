@@ -1,5 +1,7 @@
 {
-  "clone_demo": [
-    { "name": "TODO: nom du projet fictif", "deadline": "2026-07-15", "status": "at risk" }
+  "claire-dumont": [
+    { "name": "Intégration Salesforce (v2.4)", "status": "en retard de 2 jours" },
+    { "name": "Réduction dette technique notifications", "status": "en cours, dans les temps" },
+    { "name": "Export PDF", "status": "en attente, prévu pour v2.5" }
   ]
 }

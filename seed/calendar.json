@@ -1,5 +1,9 @@
 {
-  "clone_demo": [
-    { "date": "2026-07-07", "title": "TODO: exemple d'événement d'agenda", "busy": true }
+  "claire-dumont": [
+    { "date": "2026-07-06", "title": "Point sprint notifications" },
+    { "date": "2026-07-08", "title": "Réunion priorisation équipe" },
+    { "date": "2026-07-09", "title": "Point avancement Salesforce" },
+    { "date": "2026-07-15", "title": "Démo client — ne pas déplacer" },
+    { "date": "2026-07-25", "title": "Release v2.4 — deadline priorité absolue" }
   ]
 }

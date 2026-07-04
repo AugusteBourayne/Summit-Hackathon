@@ -1,15 +1,12 @@
 {
   "company": {
-    "name": "TODO(Auguste): nom de l'entreprise fictive",
-    "description": "TODO: ce que fait l'entreprise, en 2-3 phrases",
-    "product": "TODO: comment fonctionne son produit/plateforme"
+    "name": "Flowbridge",
+    "description": "SaaS B2B fictive : outil de gestion de projet et de suivi de release pour équipes tech de 20 à 200 personnes. Priorité du trimestre : tenir la deadline de release v2.4 tout en réduisant la dette technique du module notifications.",
+    "product": "Flowbridge combine tracker de tickets, changelog automatique et alertes de deadline. Produit phare du trimestre : la v2.4, avec intégration Salesforce native."
   },
   "members": [
-    {
-      "id": "clone_demo",
-      "name": "TODO: nom du persona fictif",
-      "role": "TODO: poste (ex. Engineering Manager)",
-      "consent": true
-    }
+    { "id": "claire-dumont", "name": "Claire Dumont", "role": "Head of Product", "consent": true },
+    { "id": "employe-demo", "name": "Utilisateur Démo", "role": "Product Owner", "consent": true },
+    { "id": "second-clone-demo", "name": "Marc Lefevre", "role": "Engineering Manager", "consent": true }
   ]
 }
