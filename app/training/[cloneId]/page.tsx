@@ -173,6 +173,9 @@ export default function TrainingStudio({
       }
       const result = await api.cloneVoice({ audioSample: sample });
       setVoiceId(result.voiceId);
+      // Persiste tout de suite dans seed/clones.json — sinon la Room et les autres pages
+      // continuent d'utiliser l'ancien voiceId, puisqu'il n'était gardé qu'en mémoire ici.
+      await api.updateClone(cloneId, { voiceId: result.voiceId });
     } catch (err) {
       setVoiceCloneError(err instanceof Error ? err.message : "Voice cloning failed.");
     } finally {

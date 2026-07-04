@@ -27,6 +27,16 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
+async function patch<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
 export const api = {
   ingest: (params: { scope: string; content: string; source: "upload" | "interview" }) =>
     post<{ chunksAdded: number }>("/api/ingest", params),
@@ -44,4 +54,7 @@ export const api = {
 
   cloneStats: (cloneId: string) =>
     get<{ docChunks: number; interviewChunks: number }>(`/api/clones/${cloneId}/stats`),
+
+  updateClone: (cloneId: string, updates: Partial<{ voiceId: string | null; trained: boolean }>) =>
+    patch(`/api/clones/${cloneId}`, updates),
 };
