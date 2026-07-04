@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { RetrievedChunk } from "@/lib/agent/retrieve";
 
-const VULTR_BASE = "https://api.vultrinference.com/v1";
+const VULTR_BASE = process.env.VULTR_INFERENCE_BASE_URL ?? "https://api.vultrinference.com/v1";
 const CHAT_MODEL = "MiniMaxAI/MiniMax-M2.7";
 
 function getApiKey(): string {

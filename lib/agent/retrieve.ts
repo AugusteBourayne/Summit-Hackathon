@@ -1,6 +1,6 @@
 import { scopeToCollectionName } from "@/lib/agent/ingest";
 
-const VULTR_BASE = "https://api.vultrinference.com/v1";
+const VULTR_BASE = process.env.VULTR_INFERENCE_BASE_URL ?? "https://api.vultrinference.com/v1";
 
 function getApiKey(): string {
   const key = process.env.VULTR_API_KEY;
