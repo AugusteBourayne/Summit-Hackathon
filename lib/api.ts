@@ -11,12 +11,21 @@ export type AskResponse = {
   steps: string[];
 };
 
+export type Behavior = { id: string; text: string };
+export type CloneProfile = { summary: string; behaviors: Behavior[] };
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(path);
   if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
   return res.json();
 }
@@ -35,4 +44,11 @@ export const api = {
 
   cloneVoice: (params: { audioSample: string }) =>
     post<{ voiceId: string }>("/api/voice/clone", params),
+
+  // Profil comportemental éditable d'un clone (résumé + liste de comportements).
+  getBehaviors: (cloneId: string) =>
+    get<CloneProfile>(`/api/clones/${cloneId}/behaviors`),
+
+  saveBehaviors: (cloneId: string, profile: CloneProfile) =>
+    post<CloneProfile>(`/api/clones/${cloneId}/behaviors`, profile),
 };
