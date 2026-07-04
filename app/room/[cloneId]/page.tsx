@@ -117,7 +117,21 @@ export default function AskClone({
     await recorder.start();
   }
 
-  async function releaseMic() {
+  // Chat normal : la voix ne fait que remplir la barre de texte — l'utilisateur relit,
+  // corrige si besoin, et envoie lui-même en cliquant sur Send.
+  async function releaseMicToInput() {
+    const audio = await recorder.stop();
+    if (!audio) return;
+    try {
+      const { text } = await api.stt({ audio });
+      setInput(text);
+    } catch {
+      // rien à faire, le champ reste tel quel
+    }
+  }
+
+  // Conversation vocale continue : pas d'étape de relecture, ça part directement.
+  async function releaseMicAndSend() {
     const audio = await recorder.stop();
     if (!audio) return;
     try {
@@ -132,7 +146,15 @@ export default function AskClone({
   // sur trackpad, où un clic précis de plusieurs secondes est difficile à tenir.
   async function toggleMic() {
     if (recorder.recording) {
-      await releaseMic();
+      await releaseMicToInput();
+    } else {
+      await pressMic();
+    }
+  }
+
+  async function toggleVoiceMic() {
+    if (recorder.recording) {
+      await releaseMicAndSend();
     } else {
       await pressMic();
     }
@@ -159,7 +181,7 @@ export default function AskClone({
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 px-6 py-6">
         <Avatar id={cloneId} name={clone.name} size="xl" />
         <h1 className="text-lg font-medium">{firstName}</h1>
-        <button onClick={toggleMic} title={recorder.recording ? "Click to stop and send" : "Click to talk"}>
+        <button onClick={toggleVoiceMic} title={recorder.recording ? "Click to stop and send" : "Click to talk"}>
           <Orb state={orbState} />
         </button>
         <p className="text-xs text-muted">
@@ -169,6 +191,20 @@ export default function AskClone({
               ? "Click the orb to talk"
               : null}
         </p>
+
+        {turns.length > 0 && (
+          <div className="max-h-40 w-full space-y-2 overflow-y-auto px-4 text-center">
+            {turns.slice(-2).map((turn, i) => (
+              <p
+                key={i}
+                className={turn.role === "user" ? "text-sm text-muted" : "text-base font-medium"}
+              >
+                {turn.text}
+              </p>
+            ))}
+          </div>
+        )}
+
         <button
           onClick={toggleVoiceMode}
           className="flex items-center gap-2 rounded-full bg-red-500 px-6 py-3 text-sm font-medium text-white hover:opacity-90"
