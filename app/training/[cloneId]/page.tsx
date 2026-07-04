@@ -146,6 +146,16 @@ export default function TrainingStudio({
     }
   }
 
+  // Enregistrement direct pour la voix, sans dépendre de l'interview.
+  async function toggleVoiceSampleMic() {
+    if (recorder.recording) {
+      const audio = await recorder.stop();
+      if (audio) setAnswerAudios((prev) => [...prev, audio]);
+    } else {
+      await recorder.start();
+    }
+  }
+
   async function createVoice() {
     setCloningVoice(true);
     setVoiceCloneError(null);
@@ -323,8 +333,8 @@ export default function TrainingStudio({
           status={voiceId ? "Ready" : "Not started"}
         />
         <p className="mt-3 text-sm text-muted">
-          Turns your interview recording into a cloned voice, so the clone actually sounds like
-          you in meetings.
+          Record ~10-15s of speech (or use interview answers, if any), then clone the voice —
+          no need to finish the interview first.
         </p>
 
         {voiceId ? (
@@ -333,6 +343,25 @@ export default function TrainingStudio({
           </p>
         ) : (
           <>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                onClick={toggleVoiceSampleMic}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all ${
+                  recorder.recording ? "scale-110 bg-red-500" : "bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/15"
+                } text-white`}
+                title={recorder.recording ? "Click to stop recording" : "Click to record a voice sample"}
+              >
+                <Mic className="h-5 w-5" />
+              </button>
+              <p className="text-sm text-muted">
+                {recorder.recording
+                  ? "Recording — click again to stop"
+                  : answerAudios.length > 0
+                    ? `${answerAudios.length} clip(s) ready`
+                    : "Nothing recorded yet"}
+              </p>
+            </div>
+
             <button
               onClick={createVoice}
               disabled={cloningVoice || answerAudios.length === 0}
@@ -341,9 +370,6 @@ export default function TrainingStudio({
               <Play className="h-3.5 w-3.5" />
               {cloningVoice ? "Creating voice..." : "Start voice creation"}
             </button>
-            {answerAudios.length === 0 && (
-              <p className="mt-2 text-xs text-muted">Answer at least one interview question by voice first.</p>
-            )}
             {voiceCloneError && (
               <p className="mt-2 text-xs text-red-500">{voiceCloneError}</p>
             )}
