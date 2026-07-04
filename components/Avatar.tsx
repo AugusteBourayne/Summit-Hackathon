@@ -7,6 +7,8 @@ const sizes = {
   xl: "h-28 w-28 text-3xl",
 };
 
+const photoAvatars = new Set(["elena", "raphael", "geraud", "auguste"]);
+
 export function Avatar({
   id,
   name,
@@ -16,9 +18,22 @@ export function Avatar({
   name: string;
   size?: keyof typeof sizes;
 }) {
+  if (photoAvatars.has(id)) {
+    return (
+      <div className={`relative shrink-0 overflow-hidden rounded-full bg-black/5 ${sizes[size]}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/avatars/${id}.png`}
+          alt={name}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex items-center justify-center rounded-full bg-gradient-to-br font-semibold text-white ${avatarGradient(id)} ${sizes[size]}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br font-semibold text-white ${avatarGradient(id)} ${sizes[size]}`}
     >
       {initials(name)}
     </div>

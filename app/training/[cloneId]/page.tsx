@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useRef, useState } from "react";
 import Link from "next/link";
+import { FileText, MessageCircleQuestion, Mic, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { getClone } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
@@ -10,6 +11,35 @@ import { Avatar } from "@/components/Avatar";
 import questions from "@/seed/interview_questions.json";
 
 type UploadedDoc = { name: string; chunks: number };
+
+function ModuleHeader({
+  icon: Icon,
+  tint,
+  title,
+  status,
+}: {
+  icon: React.ElementType;
+  tint: "violet" | "pink" | "cyan";
+  title: string;
+  status: string;
+}) {
+  const tints = {
+    violet: "bg-violet-500/10 text-violet-600",
+    pink: "bg-pink-500/10 text-pink-600",
+    cyan: "bg-cyan-500/10 text-cyan-600",
+  };
+  return (
+    <div className="flex items-center gap-3">
+      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tints[tint]}`}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="flex-1">
+        <h2 className="font-medium">{title}</h2>
+      </div>
+      <span className="text-xs text-muted">{status}</span>
+    </div>
+  );
+}
 
 export default function TrainingStudio({
   params,
@@ -20,14 +50,18 @@ export default function TrainingStudio({
   const clone = getClone(cloneId);
   const { currentUserId } = useCurrentUser();
   const recorder = useRecorder();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [docs, setDocs] = useState<UploadedDoc[]>([]);
   const [pasted, setPasted] = useState("");
   const [dragOver, setDragOver] = useState(false);
+
+  const [sessionStarted, setSessionStarted] = useState(false);
   const [step, setStep] = useState(0);
   const [answer, setAnswer] = useState("");
   const [answeredCount, setAnsweredCount] = useState(0);
   const [interviewDone, setInterviewDone] = useState(false);
+
   const [voiceId, setVoiceId] = useState<string | null>(clone?.voiceId ?? null);
   const [cloningVoice, setCloningVoice] = useState(false);
 
@@ -51,12 +85,6 @@ export default function TrainingStudio({
     );
   }
 
-  const progress = [
-    { label: "Documents", done: docs.length > 0 },
-    { label: "Interview", done: interviewDone },
-    { label: "Voice", done: voiceId !== null },
-  ];
-
   async function ingestText(content: string, name: string) {
     const { chunksAdded } = await api.ingest({
       scope: `personal:${cloneId}`,
@@ -66,14 +94,18 @@ export default function TrainingStudio({
     setDocs((prev) => [...prev, { name, chunks: chunksAdded }]);
   }
 
-  async function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragOver(false);
-    for (const file of Array.from(e.dataTransfer.files)) {
+  async function ingestFiles(files: FileList | File[]) {
+    for (const file of Array.from(files)) {
       if (!/\.(txt|md)$/i.test(file.name)) continue;
       const content = await file.text();
       await ingestText(content, file.name);
     }
+  }
+
+  async function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    await ingestFiles(e.dataTransfer.files);
   }
 
   async function submitAnswer(text: string) {
@@ -111,7 +143,7 @@ export default function TrainingStudio({
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
       <Link href={`/clone/${cloneId}`} className="text-sm text-muted hover:text-foreground">
         ← Back to profile
       </Link>
@@ -124,41 +156,45 @@ export default function TrainingStudio({
         </div>
       </div>
 
-      {/* Barre de progression */}
-      <div className="mt-8 flex gap-2">
-        {progress.map((stage) => (
-          <div key={stage.label} className="flex-1">
-            <div
-              className={`h-1.5 rounded-full ${stage.done ? "bg-accent" : "bg-black/10"}`}
-            />
-            <p className={`mt-1.5 text-xs ${stage.done ? "text-accent" : "text-muted"}`}>
-              {stage.done ? "✓ " : ""}{stage.label}
-            </p>
-          </div>
-        ))}
-      </div>
+      <p className="mt-6 text-sm text-muted">
+        Three independent modules — do them in any order, whenever you have material.
+      </p>
 
-      {/* 1. Documents */}
-      <section className="card mt-8 p-6">
-        <h2 className="font-medium">1 · Feed it documents</h2>
-        <p className="mt-1 text-sm text-muted">
+      {/* Documents */}
+      <section className="card mt-6 p-6">
+        <ModuleHeader
+          icon={FileText}
+          tint="violet"
+          title="Documents"
+          status={docs.length > 0 ? `${docs.length} added` : "Not started"}
+        />
+        <p className="mt-3 text-sm text-muted">
           Meeting transcripts, decision logs, written feedback — anything that shows how{" "}
-          {clone.name.split(" ")[0]} reacts and decides.
+          {clone.name.split(" ")[0]} reacts and decides. Drop as many as you want.
         </p>
 
-        <div
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".txt,.md"
+          hidden
+          onChange={(e) => e.target.files && ingestFiles(e.target.files)}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
           }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
-          className={`mt-4 rounded-xl border-2 border-dashed p-8 text-center text-sm transition-colors ${
-            dragOver ? "border-accent bg-accent-soft" : "border-black/10 text-muted"
+          className={`mt-4 w-full rounded-xl border-2 border-dashed p-8 text-center text-sm transition-colors ${
+            dragOver ? "border-accent bg-accent-soft" : "border-black/10 text-muted hover:border-black/20"
           }`}
         >
-          Drop .txt / .md files here
-        </div>
+          Drop .txt / .md files, or click to browse
+        </button>
 
         <textarea
           className="mt-3 h-24 w-full rounded-xl border border-black/10 bg-surface-2 p-3 text-sm outline-none placeholder:text-muted focus:border-accent/50"
@@ -190,24 +226,33 @@ export default function TrainingStudio({
         )}
       </section>
 
-      {/* 2. Interview */}
+      {/* Interview */}
       <section className="card mt-4 p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium">2 · AI interview</h2>
-          <span className="font-mono text-xs text-muted">
-            {answeredCount}/{questions.length}
-          </span>
-        </div>
-        <p className="mt-1 text-sm text-muted">
+        <ModuleHeader
+          icon={MessageCircleQuestion}
+          tint="pink"
+          title="AI interview"
+          status={interviewDone ? "Done" : sessionStarted ? `${answeredCount}/${questions.length}` : "Not started"}
+        />
+        <p className="mt-3 text-sm text-muted">
           The AI asks targeted questions to learn how you react. Answer by voice or keyboard —
           your voice sample also powers the clone&apos;s voice.
         </p>
 
-        {!interviewDone ? (
+        {!sessionStarted && !interviewDone && (
+          <button
+            onClick={() => setSessionStarted(true)}
+            className="mt-4 flex items-center gap-2 rounded-full bg-pink-500/10 px-5 py-2.5 text-sm font-medium text-pink-600 hover:bg-pink-500/15"
+          >
+            <Play className="h-3.5 w-3.5" /> Start interview session
+          </button>
+        )}
+
+        {sessionStarted && !interviewDone && (
           <>
-            <div className="mt-4 rounded-xl bg-accent-soft p-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-accent">
-                Question {step + 1}
+            <div className="mt-4 rounded-xl bg-pink-500/[0.06] p-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-pink-600">
+                Question {step + 1} of {questions.length}
               </p>
               <p className="mt-1 text-lg">{questions[step]}</p>
             </div>
@@ -222,9 +267,7 @@ export default function TrainingStudio({
                 } text-white`}
                 title="Hold to answer by voice"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v3m-3 0h6M12 15a4 4 0 004-4V7a4 4 0 10-8 0v4a4 4 0 004 4z" />
-                </svg>
+                <Mic className="h-5 w-5" />
               </button>
               <input
                 className="flex-1 rounded-full border border-black/10 bg-surface-2 px-4 py-2.5 text-sm outline-none placeholder:text-muted focus:border-accent/50"
@@ -242,32 +285,46 @@ export default function TrainingStudio({
               </button>
             </div>
           </>
-        ) : (
-          <p className="mt-4 rounded-xl bg-emerald-500/10 p-4 text-sm text-emerald-400">
+        )}
+
+        {interviewDone && (
+          <p className="mt-4 rounded-xl bg-emerald-500/10 p-4 text-sm text-emerald-600">
             ✓ Interview complete — the clone learned from your {questions.length} answers.
           </p>
         )}
       </section>
 
-      {/* 3. Voice */}
+      {/* Voice */}
       <section className="card mt-4 p-6">
-        <h2 className="font-medium">3 · Clone the voice</h2>
-        <p className="mt-1 text-sm text-muted">
-          Uses your interview recordings as the voice sample.
+        <ModuleHeader
+          icon={Mic}
+          tint="cyan"
+          title="Voice"
+          status={voiceId ? "Ready" : "Not started"}
+        />
+        <p className="mt-3 text-sm text-muted">
+          Turns your interview recording into a cloned voice, so the clone actually sounds like
+          you in meetings.
         </p>
+
         {voiceId ? (
-          <p className="mt-4 rounded-xl bg-cyan-500/10 p-4 text-sm text-cyan-400">
+          <p className="mt-4 rounded-xl bg-cyan-500/10 p-4 text-sm text-cyan-600">
             ✓ Voice ready — <span className="font-mono text-xs">{voiceId}</span>
           </p>
         ) : (
-          <button
-            onClick={createVoice}
-            disabled={cloningVoice || !interviewDone}
-            className="mt-4 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
-            title={!interviewDone ? "Finish the interview first" : ""}
-          >
-            {cloningVoice ? "Creating voice..." : "Create voice clone"}
-          </button>
+          <>
+            <button
+              onClick={createVoice}
+              disabled={cloningVoice || !interviewDone}
+              className="mt-4 flex items-center gap-2 rounded-full bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-600 hover:bg-cyan-500/15 disabled:opacity-40"
+            >
+              <Play className="h-3.5 w-3.5" />
+              {cloningVoice ? "Creating voice..." : "Start voice creation"}
+            </button>
+            {!interviewDone && (
+              <p className="mt-2 text-xs text-muted">Finish the AI interview first.</p>
+            )}
+          </>
         )}
       </section>
     </main>

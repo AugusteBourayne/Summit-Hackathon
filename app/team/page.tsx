@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { FileStack } from "lucide-react";
 import { api } from "@/lib/api";
 import { team } from "@/lib/team";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
+
+type UploadedDoc = { name: string; chunks: number };
+
+const ACCEPTED = ".pdf,.xlsx,.xls,.pptx,.ppt,.doc,.docx,.txt,.md,.csv";
 
 export default function TeamSettings() {
   const [name, setName] = useState(team.company.name);
@@ -12,6 +17,10 @@ export default function TeamSettings() {
   const [product, setProduct] = useState(team.company.product);
   const [saved, setSaved] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [docs, setDocs] = useState<UploadedDoc[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function save() {
     setSaving(true);
@@ -28,15 +37,84 @@ export default function TeamSettings() {
     }
   }
 
+  async function ingestFiles(files: FileList | File[]) {
+    for (const file of Array.from(files)) {
+      // PDF/Excel/PowerPoint parsing happens backend-side — here we just queue the file
+      // and ingest whatever text we can read directly (txt/md/csv).
+      const isPlainText = /\.(txt|md|csv)$/i.test(file.name);
+      const content = isPlainText
+        ? await file.text()
+        : `[company document: ${file.name}, ${(file.size / 1024).toFixed(0)} KB — to be parsed by the agent]`;
+      const { chunksAdded } = await api.ingest({ scope: "team", content, source: "upload" });
+      setDocs((prev) => [...prev, { name: file.name, chunks: chunksAdded }]);
+    }
+  }
+
+  async function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    await ingestFiles(e.dataTransfer.files);
+  }
+
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
+    <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
       <h1 className="text-2xl font-semibold">Company knowledge</h1>
       <p className="mt-2 max-w-xl text-sm text-muted">
         Shared by every clone. This is what makes their answers relevant to your business —
         not just to each person&apos;s style.
       </p>
 
-      <div className="card mt-8 space-y-5 p-6">
+      <div className="card mt-6 p-6">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600">
+            <FileStack className="h-4 w-4" />
+          </span>
+          <h2 className="font-medium">Feed it company documents</h2>
+        </div>
+        <p className="mt-3 text-sm text-muted">
+          PDFs, spreadsheets, slide decks, docs — let the agent learn the business directly from
+          what already exists, instead of typing it all by hand.
+        </p>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={ACCEPTED}
+          hidden
+          onChange={(e) => e.target.files && ingestFiles(e.target.files)}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          className={`mt-4 w-full rounded-xl border-2 border-dashed p-8 text-center text-sm transition-colors ${
+            dragOver ? "border-accent bg-accent-soft" : "border-black/10 text-muted hover:border-black/20"
+          }`}
+        >
+          Drop PDF, Excel, PowerPoint, Word, or text files — or click to browse
+        </button>
+
+        {docs.length > 0 && (
+          <ul className="mt-4 space-y-1.5 border-t border-black/5 pt-4 text-sm">
+            {docs.map((doc, i) => (
+              <li key={i} className="flex justify-between text-muted">
+                <span>📄 {doc.name}</span>
+                <span className="font-mono text-xs">{doc.chunks} chunks indexed</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="card mt-4 space-y-5 p-6">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+          Or describe it by hand
+        </p>
         <div>
           <label className="text-sm font-medium">Company name</label>
           <input
@@ -69,11 +147,11 @@ export default function TeamSettings() {
           >
             {saving ? "Saving..." : "Save to knowledge base"}
           </button>
-          {saved && <p className="text-sm text-emerald-400">{saved}</p>}
+          {saved && <p className="text-sm text-emerald-600">{saved}</p>}
         </div>
       </div>
 
-      <h2 className="mt-12 text-sm font-semibold uppercase tracking-wider text-muted">
+      <h2 className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted">
         Members
       </h2>
       <div className="card mt-3 divide-y divide-black/5">

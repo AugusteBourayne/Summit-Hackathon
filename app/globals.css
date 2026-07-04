@@ -40,18 +40,6 @@ body {
   min-height: 100%;
 }
 
-/* Fond mesh doux en arrière-plan : donne au verre dépoli quelque chose à flouter */
-.bg-mesh {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(40% 35% at 15% 10%, rgba(124, 92, 255, 0.16), transparent 70%),
-    radial-gradient(35% 30% at 85% 20%, rgba(6, 182, 212, 0.14), transparent 70%),
-    radial-gradient(45% 40% at 50% 100%, rgba(236, 72, 153, 0.1), transparent 70%);
-}
-
 /* Verre dépoli */
 .glass {
   background: var(--surface);
@@ -141,5 +129,27 @@ body {
   30% {
     transform: translateY(-4px);
     opacity: 1;
+  }
+}
+
+/* Bulles de la home qui flottent légèrement, chacune à son propre rythme */
+.float-bubble {
+  animation: float-bubble 5s ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s);
+}
+
+@keyframes float-bubble {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float-bubble {
+    animation: none;
   }
 }
