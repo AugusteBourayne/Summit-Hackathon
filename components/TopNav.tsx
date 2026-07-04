@@ -20,7 +20,7 @@ export function TopNav() {
       glow: "radial-gradient(circle, rgba(124,92,255,0.22) 0%, rgba(124,92,255,0.08) 50%, transparent 100%)",
     },
     {
-      href: `/training/${currentUserId}`,
+      href: `/clone/${currentUserId}`,
       label: "My clone",
       icon: Sparkles,
       iconColor: "text-pink-600",

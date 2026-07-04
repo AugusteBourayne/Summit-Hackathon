@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Sparkles } from "lucide-react";
 import { getClone, team } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
@@ -25,13 +25,9 @@ export default function CloneProfile({
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-      <Link href="/" className="text-sm text-muted hover:text-foreground">
-        ← Back to team
-      </Link>
-
-      <div className="mt-6 flex items-center gap-6">
+      <div className="flex items-center gap-6">
         <Avatar id={cloneId} name={clone.name} size="xl" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-semibold">{clone.name}</h1>
           <p className="text-muted">{clone.role} · {team.company.name}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -42,6 +38,15 @@ export default function CloneProfile({
             {clone.voiceId && <Badge variant="voice">voice ready</Badge>}
           </div>
         </div>
+        {isSelf && (
+          <Link
+            href={`/training/${cloneId}`}
+            className="flex shrink-0 items-center gap-2 self-start rounded-full border border-black/10 px-4 py-2 text-sm font-medium hover:bg-black/[0.03]"
+          >
+            <Sparkles className="h-4 w-4 text-pink-600" />
+            {clone.trained ? "Enrich clone" : "Train clone"}
+          </Link>
+        )}
       </div>
 
       <section className="mt-10">
@@ -100,13 +105,6 @@ export default function CloneProfile({
               initialBehaviors={clone.behaviors ?? []}
             />
           </div>
-          {isSelf && (
-            <div className="border-t border-black/5 pt-4">
-              <Link href={`/training/${cloneId}`} className="text-accent hover:underline">
-                Add documents or run an interview →
-              </Link>
-            </div>
-          )}
         </div>
       </section>
 
