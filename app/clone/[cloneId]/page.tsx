@@ -8,6 +8,7 @@ import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { SlackHint } from "@/components/Slack";
+import { BehaviorProfile } from "@/components/BehaviorProfile";
 
 export default function CloneProfile({
   params,
@@ -92,10 +93,12 @@ export default function CloneProfile({
             </p>
           </div>
           <div className="border-t border-black/5 pt-4">
-            <h3 className="font-medium">Behavioral profile</h3>
-            <p className="mt-1 text-muted">
-              {clone.personaProfile || "Empty — will be built from documents and interviews."}
-            </p>
+            <BehaviorProfile
+              cloneId={cloneId}
+              isSelf={isSelf}
+              initialSummary={clone.summary ?? ""}
+              initialBehaviors={clone.behaviors ?? []}
+            />
           </div>
           {isSelf && (
             <div className="border-t border-black/5 pt-4">
