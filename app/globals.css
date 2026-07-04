@@ -132,40 +132,54 @@ body {
   }
 }
 
-/* Bulles de la home : chacune flotte à sa propre vitesse/amplitude, de façon indépendante
-   (pas de vague synchronisée) — durée, délai, amplitude et rotation viennent de variables CSS
-   par bulle (voir lib/team.ts floatParams). */
+/* Bulles de la home : la position et la rotation animent des propriétés CSS séparées
+   (translate / rotate, pas transform) avec des durées non multiples l'une de l'autre —
+   les deux dérivent en continu, jamais synchronisées entre elles ni avec les autres bulles. */
 .float-bubble {
-  animation: float-bubble var(--float-duration, 5s) ease-in-out infinite;
-  animation-delay: var(--float-delay, 0s);
+  animation:
+    float-pos var(--float-duration, 5s) ease-in-out infinite,
+    float-rot var(--float-duration-rot, 5s) ease-in-out infinite;
+  animation-delay: var(--float-delay, 0s), var(--float-delay-rot, 0s);
 }
 
-@keyframes float-bubble {
+@keyframes float-pos {
   0% {
-    transform: translate(0, 0) rotate(0deg);
+    translate: 0 0;
   }
-  25% {
-    transform: translate(calc(var(--float-x, 4px) * 0.6), calc(var(--float-y, -8px) * -0.4))
-      rotate(calc(var(--float-rot, 1deg) * -1));
+  22% {
+    translate: calc(var(--float-x, 8px) * 0.7) calc(var(--float-y, -12px) * -0.35);
   }
-  55% {
-    transform: translate(calc(var(--float-x, 4px) * -1), var(--float-y, -8px)) rotate(var(--float-rot, 1deg));
+  48% {
+    translate: calc(var(--float-x, 8px) * -0.9) calc(var(--float-y, -12px) * 0.6);
   }
-  80% {
-    transform: translate(calc(var(--float-x, 4px) * 0.4), calc(var(--float-y, -8px) * 0.3)) rotate(0deg);
+  74% {
+    translate: var(--float-x, 8px) var(--float-y, -12px);
   }
   100% {
-    transform: translate(0, 0) rotate(0deg);
+    translate: 0 0;
+  }
+}
+
+@keyframes float-rot {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  50% {
+    rotate: var(--float-rot, 2deg);
   }
 }
 
 /* Petit "nudge" réactif quand la souris survole une bulle, en plus du flottement ambiant */
 .bubble-nudge {
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: scale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), translate 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    rotate 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .group:hover .bubble-nudge {
-  transform: var(--nudge, rotate(-3deg) scale(1.06));
+  scale: var(--nudge-scale, 1.15);
+  translate: var(--nudge-x, 0) -6px;
+  rotate: var(--nudge-rot, -4deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
