@@ -132,24 +132,47 @@ body {
   }
 }
 
-/* Bulles de la home qui flottent légèrement, chacune à son propre rythme */
+/* Bulles de la home : chacune flotte à sa propre vitesse/amplitude, de façon indépendante
+   (pas de vague synchronisée) — durée, délai, amplitude et rotation viennent de variables CSS
+   par bulle (voir lib/team.ts floatParams). */
 .float-bubble {
-  animation: float-bubble 5s ease-in-out infinite;
+  animation: float-bubble var(--float-duration, 5s) ease-in-out infinite;
   animation-delay: var(--float-delay, 0s);
 }
 
 @keyframes float-bubble {
-  0%,
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(calc(var(--float-x, 4px) * 0.6), calc(var(--float-y, -8px) * -0.4))
+      rotate(calc(var(--float-rot, 1deg) * -1));
+  }
+  55% {
+    transform: translate(calc(var(--float-x, 4px) * -1), var(--float-y, -8px)) rotate(var(--float-rot, 1deg));
+  }
+  80% {
+    transform: translate(calc(var(--float-x, 4px) * 0.4), calc(var(--float-y, -8px) * 0.3)) rotate(0deg);
+  }
   100% {
-    transform: translateY(0);
+    transform: translate(0, 0) rotate(0deg);
   }
-  50% {
-    transform: translateY(-6px);
-  }
+}
+
+/* Petit "nudge" réactif quand la souris survole une bulle, en plus du flottement ambiant */
+.bubble-nudge {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.group:hover .bubble-nudge {
+  transform: var(--nudge, rotate(-3deg) scale(1.06));
 }
 
 @media (prefers-reduced-motion: reduce) {
   .float-bubble {
     animation: none;
+  }
+  .bubble-nudge {
+    transition: none;
   }
 }

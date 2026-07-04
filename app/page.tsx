@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mic, Hash } from "lucide-react";
-import { team, clones } from "@/lib/team";
+import { team, clones, floatParams } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
 import { Avatar } from "@/components/Avatar";
 import { CloneModal } from "@/components/CloneModal";
@@ -14,30 +14,43 @@ export default function Home() {
   const trainedCount = team.members.filter((m) => clones[m.id]?.trained).length;
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-      <div className="mb-10 flex items-baseline justify-between">
-        <h1 className="text-xl font-semibold">Team</h1>
-        <p className="text-sm text-muted">
-          {trainedCount} of {team.members.length} clones trained
+    <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-14">
+      <div className="mx-auto max-w-lg text-center">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          Talk to your teammates&apos; clones
+        </h1>
+        <p className="mt-3 text-muted">
+          Get their honest reaction before you have the real conversation.
         </p>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-x-10 gap-y-8">
-        {team.members.map((member, i) => {
+      <div className="mt-14 flex flex-wrap justify-center gap-x-8 gap-y-10">
+        {team.members.map((member) => {
           const clone = clones[member.id];
           if (!clone) return null;
+          const fp = floatParams(member.id);
+          const nudge = `rotate(${member.id.length % 2 === 0 ? "-" : ""}3deg) scale(1.06)`;
 
           return (
             <div key={member.id} className="group flex w-24 flex-col items-center">
               <button
                 onClick={() => setOpenId(member.id)}
                 className="float-bubble relative flex flex-col items-center"
-                style={{ "--float-delay": `${i * 0.6}s` } as React.CSSProperties}
+                style={
+                  {
+                    "--float-duration": `${fp.duration}s`,
+                    "--float-delay": `${fp.delay}s`,
+                    "--float-x": `${fp.x}px`,
+                    "--float-y": `${-fp.y}px`,
+                    "--float-rot": `${fp.rot}deg`,
+                  } as React.CSSProperties
+                }
               >
                 <div
-                  className={`rounded-full ring-2 ring-offset-4 ring-offset-background transition-shadow ${
+                  className={`bubble-nudge rounded-full ring-2 ring-offset-4 ring-offset-background ${
                     clone.trained ? "ring-accent/40" : "ring-transparent"
                   }`}
+                  style={{ "--nudge": nudge } as React.CSSProperties}
                 >
                   <Avatar id={member.id} name={member.name} size="xl" />
                 </div>
@@ -83,6 +96,10 @@ export default function Home() {
           onClose={() => setOpenId(null)}
         />
       )}
+
+      <p className="mt-16 text-center text-xs text-muted/70">
+        {trainedCount} of {team.members.length} clones trained
+      </p>
     </main>
   );
 }

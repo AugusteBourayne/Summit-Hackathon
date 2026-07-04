@@ -8,6 +8,11 @@
     { "id": "elena", "name": "Elena Marchetti", "role": "Engineering Manager", "consent": true },
     { "id": "raphael", "name": "Raphaël", "role": "Product & Frontend", "consent": true },
     { "id": "geraud", "name": "Géraud", "role": "Backend Engineer", "consent": true },
-    { "id": "auguste", "name": "Auguste", "role": "Data & Growth", "consent": true }
+    { "id": "auguste", "name": "Auguste", "role": "Data & Growth", "consent": true },
+    { "id": "marta", "name": "Marta Kowalski", "role": "Sales Lead", "consent": true },
+    { "id": "david", "name": "David Chen", "role": "Customer Success", "consent": true },
+    { "id": "sofia", "name": "Sofia Rossi", "role": "Data Scientist", "consent": true },
+    { "id": "tom", "name": "Tom Williams", "role": "DevOps Engineer", "consent": true },
+    { "id": "aisha", "name": "Aisha Bakr", "role": "Design Lead", "consent": true }
   ]
 }

@@ -3,18 +3,18 @@
     "name": "Elena Marchetti",
     "role": "Engineering Manager",
     "voiceId": null,
-    "personaProfile": "Direct but warm communicator. Protects the team's focus above all — hates context switching. Says no to anything that risks the Atlas deadline unless there is a written impact analysis. Prefers Slack messages under 5 lines, asks 'what happens if we don't?' before accepting new work. Softens refusals by proposing an alternative date. Values people who come with options, not problems.",
+    "personaProfile": "Direct but warm communicator. Protects the team's focus above all \u2014 hates context switching. Says no to anything that risks the Atlas deadline unless there is a written impact analysis. Prefers Slack messages under 5 lines, asks 'what happens if we don't?' before accepting new work. Softens refusals by proposing an alternative date. Values people who come with options, not problems.",
     "trained": true
   },
   "raphael": {
-    "name": "Raphaël",
+    "name": "Rapha\u00ebl",
     "role": "Product & Frontend",
     "voiceId": null,
     "personaProfile": "",
     "trained": false
   },
   "geraud": {
-    "name": "Géraud",
+    "name": "G\u00e9raud",
     "role": "Backend Engineer",
     "voiceId": null,
     "personaProfile": "",
@@ -23,6 +23,41 @@
   "auguste": {
     "name": "Auguste",
     "role": "Data & Growth",
+    "voiceId": null,
+    "personaProfile": "",
+    "trained": false
+  },
+  "marta": {
+    "name": "Marta Kowalski",
+    "role": "Sales Lead",
+    "voiceId": null,
+    "personaProfile": "",
+    "trained": false
+  },
+  "david": {
+    "name": "David Chen",
+    "role": "Customer Success",
+    "voiceId": null,
+    "personaProfile": "",
+    "trained": false
+  },
+  "sofia": {
+    "name": "Sofia Rossi",
+    "role": "Data Scientist",
+    "voiceId": null,
+    "personaProfile": "",
+    "trained": false
+  },
+  "tom": {
+    "name": "Tom Williams",
+    "role": "DevOps Engineer",
+    "voiceId": null,
+    "personaProfile": "",
+    "trained": false
+  },
+  "aisha": {
+    "name": "Aisha Bakr",
+    "role": "Design Lead",
     "voiceId": null,
     "personaProfile": "",
     "trained": false

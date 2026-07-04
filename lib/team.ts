@@ -44,3 +44,21 @@ export function initials(name: string): string {
     .join("")
     .toUpperCase();
 }
+
+function hashOf(id: string): number {
+  let hash = 0;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return hash;
+}
+
+// Paramètres de flottement pseudo-aléatoires mais stables par personne : chacun dérive
+// (durée, délai, amplitude, sens) de son id, pour un mouvement indépendant et non synchronisé.
+export function floatParams(id: string) {
+  const h = hashOf(id);
+  const duration = 4.2 + ((h >> 2) % 5) * 0.5; // 4.2s → 6.7s
+  const delay = -((h >> 5) % 40) / 10; // décalage négatif : démarre "en cours de route"
+  const x = (((h >> 8) % 5) - 2) * 3; // -6px → 6px
+  const y = 6 + ((h >> 11) % 4) * 2; // 6px → 12px
+  const rot = (((h >> 13) % 3) - 1) * 1.5; // -1.5deg → 1.5deg
+  return { duration, delay, x, y, rot };
+}
