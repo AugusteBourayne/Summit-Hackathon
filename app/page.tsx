@@ -5,10 +5,9 @@ import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { team, clones, floatParams, Member } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { Avatar } from "@/components/Avatar";
 import { CloneModal } from "@/components/CloneModal";
-
-const PRIMARY_IDS = ["claire-dumont", "employe-demo", "second-clone-demo"];
 
 function Bubble({
   member,
@@ -20,6 +19,7 @@ function Bubble({
   onOpen: (id: string) => void;
 }) {
   const clone = clones[member.id];
+  const name = useDisplayName(member.id, member.name);
   if (!clone) return null;
   const fp = floatParams(member.id);
 
@@ -41,9 +41,9 @@ function Bubble({
             clone.trained ? "ring-accent/40" : "ring-transparent"
           }`}
         >
-          <Avatar id={member.id} name={member.name} size="xl" />
+          <Avatar id={member.id} name={name} size="xl" />
         </div>
-        <p className="mt-3 text-sm font-medium">{member.name}</p>
+        <p className="mt-3 text-sm font-medium">{name}</p>
         <p className="text-xs text-muted">{member.role.split(" ")[0]}</p>
       </button>
 
@@ -53,7 +53,7 @@ function Bubble({
             href={`/room/${member.id}`}
             className="rounded-full bg-accent-soft px-3 py-1 text-[11px] font-medium text-accent hover:bg-accent/20"
           >
-            Ask {member.name.split(" ")[0]} →
+            Ask {name.split(" ")[0]} →
           </Link>
         ) : member.id === currentUserId ? (
           <Link href={`/training/${member.id}`} className="text-[11px] text-accent">
@@ -71,12 +71,12 @@ export default function Home() {
   const { currentUserId } = useCurrentUser();
   const [openId, setOpenId] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
-  const trainedCount = team.members.filter((m) => clones[m.id]?.trained).length;
 
-  const primary = PRIMARY_IDS.map((id) => team.members.find((m) => m.id === id)).filter(
-    (m): m is Member => !!m,
-  );
-  const rest = team.members.filter((m) => !PRIMARY_IDS.includes(m.id));
+  // On ne montre jamais son propre profil dans l'équipe : uniquement les coéquipiers.
+  const others = team.members.filter((m) => m.id !== currentUserId);
+  const trainedCount = others.filter((m) => clones[m.id]?.trained).length;
+  const primary = others.slice(0, 3);
+  const rest = others.slice(3);
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-14">
@@ -130,7 +130,7 @@ export default function Home() {
       )}
 
       <p className="mt-16 text-center text-xs text-muted/70">
-        {trainedCount} of {team.members.length} clones trained
+        {trainedCount} of {others.length} teammate clones trained
       </p>
     </main>
   );

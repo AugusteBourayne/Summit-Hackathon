@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageSquare, X } from "lucide-react";
 import { Clone } from "@/lib/team";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { api } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
@@ -40,6 +41,8 @@ export function CloneModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const name = useDisplayName(cloneId, clone.name);
+
   useEffect(() => {
     let cancelled = false;
     api
@@ -66,9 +69,9 @@ export function CloneModal({
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <Avatar id={cloneId} name={clone.name} size="lg" />
+            <Avatar id={cloneId} name={name} size="lg" />
             <div>
-              <h2 className="text-lg font-semibold">{clone.name}</h2>
+              <h2 className="text-lg font-semibold">{name}</h2>
               <p className="text-sm text-muted">{clone.role}</p>
             </div>
           </div>
@@ -109,7 +112,7 @@ export function CloneModal({
               href={`/room/${cloneId}`}
               className="flex items-center justify-center gap-2 rounded-full bg-accent py-2.5 text-sm font-medium text-white hover:opacity-90"
             >
-              <MessageSquare className="h-4 w-4" /> Ask {clone.name.split(" ")[0]}
+              <MessageSquare className="h-4 w-4" /> Ask {name.split(" ")[0]}
             </Link>
           ) : (
             <span className="flex items-center justify-center gap-2 rounded-full bg-black/[0.04] py-2.5 text-sm text-muted/60">
@@ -118,7 +121,7 @@ export function CloneModal({
           )}
           {clone.trained && (
             <div className="mt-3">
-              <SlackHint name={clone.name} />
+              <SlackHint name={name} />
             </div>
           )}
         </div>
