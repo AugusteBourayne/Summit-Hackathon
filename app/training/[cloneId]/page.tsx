@@ -6,7 +6,7 @@ import { FileText, MessageCircleQuestion, Mic, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { getClone } from "@/lib/team";
 import { useCurrentUser } from "@/lib/currentUser";
-import { useRecorder } from "@/lib/useRecorder";
+import { useRecorder, concatWavClipsBase64 } from "@/lib/useRecorder";
 import { Avatar } from "@/components/Avatar";
 import questions from "@/seed/interview_questions.json";
 
@@ -64,6 +64,10 @@ export default function TrainingStudio({
 
   const [voiceId, setVoiceId] = useState<string | null>(clone?.voiceId ?? null);
   const [cloningVoice, setCloningVoice] = useState(false);
+  const [voiceCloneError, setVoiceCloneError] = useState<string | null>(null);
+  // Chaque réponse enregistrée au micro pendant l'interview, gardée pour servir d'échantillon
+  // réel au clonage de voix (au lieu du texte factice qui était envoyé jusqu'ici).
+  const [answerAudios, setAnswerAudios] = useState<string[]>([]);
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
 
@@ -127,6 +131,7 @@ export default function TrainingStudio({
   async function releaseMic() {
     const audio = await recorder.stop();
     if (!audio) return;
+    setAnswerAudios((prev) => [...prev, audio]);
     const { text } = await api.stt({ audio });
     setAnswer(text);
   }
@@ -143,10 +148,17 @@ export default function TrainingStudio({
 
   async function createVoice() {
     setCloningVoice(true);
+    setVoiceCloneError(null);
     try {
-      // L'échantillon réel sera l'audio concaténé de l'interview (branché avec la partie d'Auguste).
-      const result = await api.cloneVoice({ audioSample: "interview-sample" });
+      const sample = await concatWavClipsBase64(answerAudios);
+      if (!sample) {
+        setVoiceCloneError("No voice recorded yet — answer at least one interview question by voice first.");
+        return;
+      }
+      const result = await api.cloneVoice({ audioSample: sample });
       setVoiceId(result.voiceId);
+    } catch (err) {
+      setVoiceCloneError(err instanceof Error ? err.message : "Voice cloning failed.");
     } finally {
       setCloningVoice(false);
     }
@@ -323,14 +335,17 @@ export default function TrainingStudio({
           <>
             <button
               onClick={createVoice}
-              disabled={cloningVoice || !interviewDone}
+              disabled={cloningVoice || answerAudios.length === 0}
               className="mt-4 flex items-center gap-2 rounded-full bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-600 hover:bg-cyan-500/15 disabled:opacity-40"
             >
               <Play className="h-3.5 w-3.5" />
               {cloningVoice ? "Creating voice..." : "Start voice creation"}
             </button>
-            {!interviewDone && (
-              <p className="mt-2 text-xs text-muted">Finish the AI interview first.</p>
+            {answerAudios.length === 0 && (
+              <p className="mt-2 text-xs text-muted">Answer at least one interview question by voice first.</p>
+            )}
+            {voiceCloneError && (
+              <p className="mt-2 text-xs text-red-500">{voiceCloneError}</p>
             )}
           </>
         )}

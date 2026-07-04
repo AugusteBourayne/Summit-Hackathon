@@ -2,26 +2,30 @@
 
 import { useRef, useState } from "react";
 
+function getAudioContextCtor() {
+  return (
+    window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  );
+}
+
 // Le navigateur n'enregistre jamais nativement en WAV (webm/opus sur Chrome, ogg/opus sur
 // Firefox) — or Gradium STT refuse explicitement ces formats compressés ("unsupported content
 // type"). On décode donc le blob enregistré via Web Audio API et on le ré-encode nous-mêmes en
 // WAV PCM 16 bits avant de l'envoyer, pour rester compatible quel que soit le navigateur.
 async function blobToWav(blob: Blob): Promise<Blob> {
   const arrayBuffer = await blob.arrayBuffer();
-  const AudioContextCtor =
-    window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const audioCtx = new AudioContextCtor();
+  const audioCtx = new (getAudioContextCtor())();
   try {
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    return new Blob([encodeWavPcm16(audioBuffer)], { type: "audio/wav" });
+    return new Blob([encodeWavPcm16(audioBuffer.getChannelData(0), audioBuffer.sampleRate)], {
+      type: "audio/wav",
+    });
   } finally {
     audioCtx.close();
   }
 }
 
-function encodeWavPcm16(audioBuffer: AudioBuffer): ArrayBuffer {
-  const samples = audioBuffer.getChannelData(0); // mono : suffisant pour de la transcription vocale
-  const sampleRate = audioBuffer.sampleRate;
+function encodeWavPcm16(samples: Float32Array, sampleRate: number): ArrayBuffer {
   const dataSize = samples.length * 2; // 16 bits = 2 octets par échantillon
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
@@ -53,6 +57,42 @@ function encodeWavPcm16(audioBuffer: AudioBuffer): ArrayBuffer {
   return buffer;
 }
 
+// Concatène plusieurs clips WAV (base64, ex. les réponses d'une interview) en un seul
+// échantillon WAV — utilisé pour fabriquer l'audio envoyé au clonage de voix, qui doit être
+// un seul fichier assez long plutôt que des bouts de quelques secondes chacun.
+export async function concatWavClipsBase64(base64Clips: string[]): Promise<string | null> {
+  if (base64Clips.length === 0) return null;
+  const audioCtx = new (getAudioContextCtor())();
+  try {
+    const buffers = await Promise.all(
+      base64Clips.map(async (b64) => {
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return audioCtx.decodeAudioData(bytes.buffer);
+      })
+    );
+
+    const sampleRate = buffers[0].sampleRate;
+    const totalLength = buffers.reduce((sum, buf) => sum + buf.length, 0);
+    const combined = new Float32Array(totalLength);
+    let offset = 0;
+    for (const buf of buffers) {
+      combined.set(buf.getChannelData(0), offset);
+      offset += buf.length;
+    }
+
+    const wavBlob = new Blob([encodeWavPcm16(combined, sampleRate)], { type: "audio/wav" });
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+      reader.readAsDataURL(wavBlob);
+    });
+  } finally {
+    audioCtx.close();
+  }
+}
+
 // Seuil de niveau sonore (RMS, échelle 0-1) en dessous duquel on considère que c'est du silence.
 const SILENCE_RMS_THRESHOLD = 0.02;
 // Durée de silence continu après avoir parlé avant de considérer que la personne a fini.
@@ -62,9 +102,7 @@ const SILENCE_DURATION_MS = 1500;
 // suit un moment de parole détecté — évite d'avoir à cliquer pour signaler "j'ai fini de parler"
 // en conversation vocale continue. Purement local (analyse du flux audio), aucun serveur impliqué.
 function watchForSilence(stream: MediaStream, onSilence: () => void): () => void {
-  const AudioContextCtor =
-    window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const audioCtx = new AudioContextCtor();
+  const audioCtx = new (getAudioContextCtor())();
   const source = audioCtx.createMediaStreamSource(stream);
   const analyser = audioCtx.createAnalyser();
   analyser.fftSize = 512;
