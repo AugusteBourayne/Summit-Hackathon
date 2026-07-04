@@ -1,0 +1,15 @@
+{
+  "company": {
+    "name": "TODO(Auguste): nom de l'entreprise fictive",
+    "description": "TODO: ce que fait l'entreprise, en 2-3 phrases",
+    "product": "TODO: comment fonctionne son produit/plateforme"
+  },
+  "members": [
+    {
+      "id": "clone_demo",
+      "name": "TODO: nom du persona fictif",
+      "role": "TODO: poste (ex. Engineering Manager)",
+      "consent": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "clone_demo": {
+    "name": "TODO: nom du persona fictif",
+    "role": "TODO: poste",
+    "voiceId": null,
+    "personaProfile": "TODO(Auguste): profil comportemental structuré — style de communication, priorités, critères de décision récurrents, manières de refuser.",
+    "trained": false
+  }
+}
