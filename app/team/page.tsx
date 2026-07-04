@@ -38,16 +38,40 @@ export default function TeamSettings() {
       setSaving(false);
     }
   }
-
+// Convertit un fichier en data URL base64 (format "data:<mime>;base64,...") cote navigateur.
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Lecture du fichier echouee"));
+      reader.readAsDataURL(file);
+    });
+  }
   async function ingestFiles(files: FileList | File[]) {
     for (const file of Array.from(files)) {
-      // PDF/Excel/PowerPoint parsing happens backend-side — here we just queue the file
-      // and ingest whatever text we can read directly (txt/md/csv).
-      const isPlainText = /\.(txt|md|csv)$/i.test(file.name);
-      const content = isPlainText
-        ? await file.text()
-        : `[company document: ${file.name}, ${(file.size / 1024).toFixed(0)} KB — to be parsed by the agent]`;
-      const { chunksAdded } = await api.ingest({ scope: "team", content, source: "upload" });
+      const lower = file.name.toLowerCase();
+      let params;
+
+      if (/\.(txt|md|csv)$/i.test(lower)) {
+        params = { scope: "team" as const, content: await file.text(), source: "upload" as const };
+      } else if (/\.(png|jpg|jpeg|webp|gif)$/i.test(lower)) {
+        const imageDataUrl = await fileToDataUrl(file);
+        params = { scope: "team" as const, content: "", source: "upload" as const, imageDataUrl };
+      } else if (/\.pdf$/i.test(lower)) {
+        const fileDataUrl = await fileToDataUrl(file);
+        params = { scope: "team" as const, content: "", source: "upload" as const, fileDataUrl, fileType: "pdf" as const };
+      } else if (/\.docx$/i.test(lower)) {
+        const fileDataUrl = await fileToDataUrl(file);
+        params = { scope: "team" as const, content: "", source: "upload" as const, fileDataUrl, fileType: "docx" as const };
+      } else {
+        params = {
+          scope: "team" as const,
+          content: `[document non supporte pour extraction : ${file.name}]`,
+          source: "upload" as const,
+        };
+      }
+
+      const { chunksAdded } = await api.ingest(params);
       setDocs((prev) => [...prev, { name: file.name, chunks: chunksAdded }]);
     }
   }

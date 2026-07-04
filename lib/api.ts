@@ -41,8 +41,14 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
 }
 
 export const api = {
-  ingest: (params: { scope: string; content: string; source: "upload" | "interview" }) =>
-    post<{ chunksAdded: number }>("/api/ingest", params),
+  ingest: (params: {
+    scope: string;
+    content: string;
+    source: "upload" | "interview";
+    imageDataUrl?: string;
+    fileDataUrl?: string;
+    fileType?: "pdf" | "docx";
+  }) => post<{ chunksAdded: number }>("/api/ingest", params),
 
   ask: (params: { cloneId: string; mode: "clone" | "interviewer"; text: string; history?: unknown[] }) =>
     post<AskResponse>("/api/ask", params),
