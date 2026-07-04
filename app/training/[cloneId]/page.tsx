@@ -4,7 +4,7 @@ import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { FileText, MessageCircleQuestion, Mic, Play } from "lucide-react";
 import { api } from "@/lib/api";
-import { getClone } from "@/lib/team";
+import { useWorkspace } from "@/lib/workspace";
 import { useCurrentUser } from "@/lib/currentUser";
 import { useRecorder, concatWavClipsBase64 } from "@/lib/useRecorder";
 import { Avatar } from "@/components/Avatar";
@@ -47,6 +47,7 @@ export default function TrainingStudio({
   params: Promise<{ cloneId: string }>;
 }) {
   const { cloneId } = use(params);
+  const { getClone } = useWorkspace();
   const clone = getClone(cloneId);
   const { currentUserId } = useCurrentUser();
   const recorder = useRecorder();
@@ -100,8 +101,12 @@ export default function TrainingStudio({
 
   async function ingestFiles(files: FileList | File[]) {
     for (const file of Array.from(files)) {
-      if (!/\.(txt|md)$/i.test(file.name)) continue;
-      const content = await file.text();
+      // PDF/Word/Excel/PowerPoint/images sont parsés côté agent — ici on ingère le texte
+      // directement quand on le peut, sinon on transmet une référence au fichier.
+      const isPlainText = /\.(txt|md|csv)$/i.test(file.name);
+      const content = isPlainText
+        ? await file.text()
+        : `[document: ${file.name}, ${(file.size / 1024).toFixed(0)} KB — to be parsed by the agent]`;
       await ingestText(content, file.name);
     }
   }
@@ -218,7 +223,7 @@ export default function TrainingStudio({
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".txt,.md"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp,.heic"
           hidden
           onChange={(e) => e.target.files && ingestFiles(e.target.files)}
         />
@@ -234,7 +239,7 @@ export default function TrainingStudio({
             dragOver ? "border-accent bg-accent-soft" : "border-black/10 text-muted hover:border-black/20"
           }`}
         >
-          Drop .txt / .md files, or click to browse
+          Drop PDF, Word, Excel, PowerPoint, images, or text files — or click to browse
         </button>
 
         <textarea
