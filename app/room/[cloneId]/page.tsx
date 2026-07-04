@@ -38,6 +38,7 @@ export default function AskClone({
   const [dragOver, setDragOver] = useState(false);
   const [openPanel, setOpenPanel] = useState<number | null>(null);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,7 @@ export default function AskClone({
       { role: "user", text: displayText, attachments: attached.map((a) => a.name) },
     ]);
     setStatus("thinking");
+    setVoiceError(null);
     scrollDown();
 
     try {
@@ -104,16 +106,23 @@ export default function AskClone({
         };
         audio.onerror = () => setStatus("idle");
         await audio.play();
-      } catch {
+      } catch (err) {
+        // Navigateurs (surtout Safari) : la lecture audio peut être refusée si trop de temps
+        // s'est écoulé depuis le dernier clic (politique autoplay). Le texte reste affiché.
         setStatus("idle");
+        setVoiceError(
+          `Couldn't play the voice reply (${err instanceof Error ? err.message : "unknown error"}). The text response above is still valid.`
+        );
       }
-    } catch {
+    } catch (err) {
       setStatus("idle");
+      setVoiceError(`Couldn't get a response (${err instanceof Error ? err.message : "unknown error"}).`);
     }
   }
 
   async function pressMic() {
     if (status === "thinking") return;
+    setVoiceError(null);
     await recorder.start();
   }
 
@@ -133,12 +142,20 @@ export default function AskClone({
   // Conversation vocale continue : pas d'étape de relecture, ça part directement.
   async function releaseMicAndSend() {
     const audio = await recorder.stop();
-    if (!audio) return;
+    if (!audio) {
+      setVoiceError("No audio captured — hold the recording a bit longer next time.");
+      return;
+    }
     try {
       const { text } = await api.stt({ audio });
+      if (!text.trim()) {
+        setVoiceError("Didn't catch any speech in that recording — try again.");
+        return;
+      }
       await send(text);
-    } catch {
+    } catch (err) {
       setStatus("idle");
+      setVoiceError(`Transcription failed (${err instanceof Error ? err.message : "unknown error"}).`);
     }
   }
 
@@ -187,10 +204,16 @@ export default function AskClone({
         <p className="text-xs text-muted">
           {recorder.recording
             ? "Listening — click the orb when you're done talking"
-            : status === "idle"
-              ? "Click the orb to talk"
-              : null}
+            : status === "thinking"
+              ? "Thinking…"
+              : status === "speaking"
+                ? "Speaking…"
+                : "Click the orb to talk"}
         </p>
+
+        {voiceError && (
+          <p className="max-w-sm text-center text-xs text-red-500">{voiceError}</p>
+        )}
 
         {turns.length > 0 && (
           <div className="max-h-40 w-full space-y-2 overflow-y-auto px-4 text-center">
