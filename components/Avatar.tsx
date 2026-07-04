@@ -7,7 +7,12 @@ const sizes = {
   xl: "h-28 w-28 text-3xl",
 };
 
-const photoAvatars = new Set<string>();
+// Associe un id de clone à un fichier photo existant dans /public/avatars.
+const photoAvatars: Record<string, string> = {
+  "claire-dumont": "elena",
+  "employe-demo": "raphael",
+  "second-clone-demo": "geraud",
+};
 
 export function Avatar({
   id,
@@ -18,12 +23,13 @@ export function Avatar({
   name: string;
   size?: keyof typeof sizes;
 }) {
-  if (photoAvatars.has(id)) {
+  const photo = photoAvatars[id];
+  if (photo) {
     return (
       <div className={`relative shrink-0 overflow-hidden rounded-full bg-black/5 ${sizes[size]}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`/avatars/${id}.png`}
+          src={`/avatars/${photo}.png`}
           alt={name}
           className="h-full w-full object-cover"
         />
