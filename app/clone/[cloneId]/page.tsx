@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { SlackHint } from "@/components/Slack";
 import { BehaviorProfile } from "@/components/BehaviorProfile";
+import { ProfileTabs } from "@/components/ProfileTabs";
 
 export default function CloneProfile({
   params,
@@ -25,9 +26,7 @@ export default function CloneProfile({
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-      <Link href="/" className="text-sm text-muted hover:text-foreground">
-        ← Back to team
-      </Link>
+      {isSelf && <ProfileTabs cloneId={cloneId} />}
 
       <div className="mt-6 flex items-center gap-6">
         <Avatar id={cloneId} name={clone.name} size="xl" />
