@@ -98,8 +98,8 @@
   "second-clone-demo": {
     "name": "Patrick Nguyen",
     "role": "Engineering Manager",
-    "voiceId": null,
-    "trained": false,
+    "voiceId": "XCZMhm0JHeQ2umwI",
+    "trained": true,
     "summary": "",
     "behaviors": [],
     "personaProfile": ""
