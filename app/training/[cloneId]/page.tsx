@@ -145,6 +145,20 @@ export default function TrainingStudio({
     );
   }
 
+  // Rien dans le code ne passait "trained" a true automatiquement (seules les fiches de
+  // seed ecrites a la main l'avaient) : un clone pouvait avoir documents + interview + voix
+  // et rester bloque sur "Not trained yet" pour toujours, empechant toute conversation. Des
+  // qu'un module produit du contenu reel, on marque le clone utilisable — pas besoin des
+  // trois modules au maximum, un seul suffit pour commencer a interroger le clone.
+  async function markTrainedIfNeeded() {
+    if (clone?.trained) return;
+    try {
+      await api.updateClone(cloneId, { trained: true });
+    } catch {
+      /* pas grave : au pire le badge reste sur "not trained" jusqu'au prochain succes */
+    }
+  }
+
   // Deduit les nouveaux traits de comportement apportes par ce contenu et les ajoute a la
   // liste en attente (voir lib/behaviorStorage.ts) — la page profil les affichera comme
   // suggestions a valider, sans jamais ecraser ce que l'utilisateur a deja confirme.
@@ -179,6 +193,7 @@ export default function TrainingStudio({
       const stats = await api.cloneStats(cloneId);
       setSavedStats(stats);
       await suggestBehaviors(content);
+      await markTrainedIfNeeded();
     } catch (err) {
       setDocError(
         `Couldn't save "${label}" (${err instanceof Error ? err.message : "unknown error"}). Try again.`
@@ -217,6 +232,7 @@ export default function TrainingStudio({
     const stats = await api.cloneStats(cloneId);
     setSavedStats(stats);
     await suggestBehaviors(content);
+    await markTrainedIfNeeded();
     setAnswer("");
     setAnsweredCount((count) => count + 1);
     if (step + 1 >= questions.length) {
@@ -274,6 +290,7 @@ export default function TrainingStudio({
       // Persiste tout de suite dans seed/clones.json — sinon la Room et les autres pages
       // continuent d'utiliser l'ancien voiceId, puisqu'il n'était gardé qu'en mémoire ici.
       await api.updateClone(cloneId, { voiceId: result.voiceId });
+      await markTrainedIfNeeded();
     } catch (err) {
       setVoiceCloneError(err instanceof Error ? err.message : "Voice cloning failed.");
     } finally {
