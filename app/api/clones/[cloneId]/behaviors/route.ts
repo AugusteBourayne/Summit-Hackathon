@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 import clones from "@/seed/clones.json";
 
 // Profil comportemental d'un clone : résumé lisible + liste de comportements que la personne
 // peut éditer/supprimer/ajouter depuis son propre profil.
 //
-// TODO(Géraud): remplacer ce mock par la vraie persistance (voir /lib/agent et /CONTRACTS.md).
-// - GET  : renvoyer le { summary, behaviors } stocké pour ce clone.
-// - POST : persister le { summary, behaviors } reçu, puis l'agent /api/ask DOIT synthétiser
-//          à partir de cette liste (au lieu de personaProfile) — une suppression = le clone
-//          cesse de s'appuyer sur ce comportement.
+// Persiste directement dans seed/clones.json (même principe que le PATCH de voiceId/trained
+// dans /api/clones/[cloneId]/route.ts) : sans ça, "Save changes" n'écrivait que dans le
+// localStorage du navigateur de la personne qui sauvegarde — invisible pour un coequipier qui
+// ouvre le meme profil depuis sa propre machine, meme apres avoir bien vu les documents
+// (eux, reellement stockes cote Vultr, donc partages).
 
 type Behavior = { id: string; text: string };
 type CloneProfile = { summary: string; behaviors: Behavior[] };
+
+const CLONES_PATH = path.join(process.cwd(), "seed", "clones.json");
 
 const store = clones as Record<string, { summary?: string; behaviors?: Behavior[] }>;
 
@@ -31,12 +35,22 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ cloneId: string }> },
 ) {
-  await params;
+  const { cloneId } = await params;
   const body = (await req.json()) as CloneProfile;
-  // Mock : on renvoie simplement ce qui a été envoyé (pas de persistance réelle côté serveur
-  // pour l'instant — c'est le point que Géraud branchera).
-  return NextResponse.json<CloneProfile>({
+  const profile: CloneProfile = {
     summary: body.summary ?? "",
     behaviors: Array.isArray(body.behaviors) ? body.behaviors : [],
-  });
+  };
+
+  const raw = fs.readFileSync(CLONES_PATH, "utf-8");
+  const allClones = JSON.parse(raw);
+
+  if (!allClones[cloneId]) {
+    return NextResponse.json({ error: `Unknown clone: ${cloneId}` }, { status: 404 });
+  }
+
+  allClones[cloneId] = { ...allClones[cloneId], ...profile };
+  fs.writeFileSync(CLONES_PATH, JSON.stringify(allClones, null, 2), "utf-8");
+
+  return NextResponse.json<CloneProfile>(profile);
 }
