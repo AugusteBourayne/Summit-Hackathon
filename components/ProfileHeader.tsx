@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
-import { Camera, Check, Pencil, Sparkles, X } from "lucide-react";
+import { Camera, Check, Pencil, X } from "lucide-react";
 import { Clone } from "@/lib/team";
 import { api } from "@/lib/api";
 import { useDisplayName, useProfileOverrides } from "@/lib/profileOverrides";
@@ -137,16 +136,6 @@ export function ProfileHeader({
           {clone.voiceId && <Badge variant="voice">voice ready</Badge>}
         </div>
       </div>
-
-      {isSelf && (
-        <Link
-          href={`/training/${cloneId}`}
-          className="flex shrink-0 items-center gap-2 self-start rounded-full border border-black/10 px-4 py-2 text-sm font-medium hover:bg-black/[0.03]"
-        >
-          <Sparkles className="h-4 w-4 text-pink-600" />
-          {clone.trained ? "Enrich clone" : "Train clone"}
-        </Link>
-      )}
     </div>
   );
 }
