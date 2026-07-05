@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { TopNav } from "@/components/TopNav";
 import { CurrentUserProvider } from "@/lib/currentUser";
 import { ProfileOverridesProvider } from "@/lib/profileOverrides";
+import { WorkspaceProvider } from "@/lib/workspace";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,12 +32,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <CurrentUserProvider>
-          <ProfileOverridesProvider>
-            <TopNav />
-            {children}
-          </ProfileOverridesProvider>
-        </CurrentUserProvider>
+        <WorkspaceProvider>
+          <CurrentUserProvider>
+            <ProfileOverridesProvider>
+              <TopNav />
+              {children}
+            </ProfileOverridesProvider>
+          </CurrentUserProvider>
+        </WorkspaceProvider>
       </body>
     </html>
   );

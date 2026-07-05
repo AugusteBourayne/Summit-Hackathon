@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import { team, clones, floatParams, Member } from "@/lib/team";
+import { floatParams, Member } from "@/lib/team";
+import { useWorkspace } from "@/lib/workspace";
 import { useCurrentUser } from "@/lib/currentUser";
 import { useDisplayName } from "@/lib/profileOverrides";
 import { Avatar } from "@/components/Avatar";
@@ -18,6 +19,7 @@ function Bubble({
   currentUserId: string;
   onOpen: (id: string) => void;
 }) {
+  const { clones } = useWorkspace();
   const clone = clones[member.id];
   const name = useDisplayName(member.id, member.name);
   if (!clone) return null;
@@ -68,12 +70,13 @@ function Bubble({
 }
 
 export default function Home() {
+  const { members, clones } = useWorkspace();
   const { currentUserId } = useCurrentUser();
   const [openId, setOpenId] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
 
   // On ne montre jamais son propre profil dans l'équipe : uniquement les coéquipiers.
-  const others = team.members.filter((m) => m.id !== currentUserId);
+  const others = members.filter((m) => m.id !== currentUserId);
   const trainedCount = others.filter((m) => clones[m.id]?.trained).length;
   const primary = others.slice(0, 3);
   const rest = others.slice(3);
@@ -94,11 +97,27 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="mt-16 flex flex-wrap justify-center gap-x-8 gap-y-10">
-        {primary.map((member) => (
-          <Bubble key={member.id} member={member} currentUserId={currentUserId} onOpen={setOpenId} />
-        ))}
-      </div>
+      {others.length === 0 ? (
+        <div className="mx-auto mt-16 max-w-md text-center">
+          <div className="card p-8">
+            <p className="text-sm text-muted">
+              No teammates yet in this company. Add profiles to start rehearsing conversations.
+            </p>
+            <Link
+              href="/settings"
+              className="mt-4 inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
+            >
+              Go to settings →
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-16 flex flex-wrap justify-center gap-x-8 gap-y-10">
+          {primary.map((member) => (
+            <Bubble key={member.id} member={member} currentUserId={currentUserId} onOpen={setOpenId} />
+          ))}
+        </div>
+      )}
 
       {rest.length > 0 && (
         <div className="mt-8 flex justify-center">

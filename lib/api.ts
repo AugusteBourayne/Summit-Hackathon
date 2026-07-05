@@ -13,6 +13,13 @@ export type AskResponse = {
 
 export type Behavior = { id: string; text: string };
 export type CloneProfile = { summary: string; behaviors: Behavior[] };
+export type DocumentSummary = {
+  batchId: string;
+  label: string;
+  source: "upload" | "interview";
+  chunkCount: number;
+  createdAt: string;
+};
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -40,9 +47,29 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(path, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json();
+}
+
 export const api = {
-  ingest: (params: { scope: string; content: string; source: "upload" | "interview" }) =>
+  ingest: (params: { scope: string; content: string; source: "upload" | "interview"; label?: string }) =>
     post<{ chunksAdded: number }>("/api/ingest", params),
+
+  listDocuments: (cloneId: string) =>
+    get<{ documents: DocumentSummary[] }>(`/api/clones/${cloneId}/documents`),
+
+  deleteDocument: (cloneId: string, batchId: string) =>
+    del<{ deleted: number }>(`/api/clones/${cloneId}/documents/${encodeURIComponent(batchId)}`),
+
+  // Genere automatiquement resume + traits de comportement a partir des documents deja ingeres.
+  generateProfile: (cloneId: string, name: string) =>
+    post<{ summary: string; behaviors: string[] }>(`/api/clones/${cloneId}/summarize`, { name }),
+
+  // Deduit les NOUVEAUX traits apportes par un contenu precis (appele apres chaque ingestion).
+  deriveBehaviors: (cloneId: string, params: { name: string; content: string; existingBehaviors: string[] }) =>
+    post<{ behaviors: string[] }>(`/api/clones/${cloneId}/behaviors/derive`, params),
 
   ask: (params: { cloneId: string; mode: "clone" | "interviewer"; text: string; history?: unknown[] }) =>
     post<AskResponse>("/api/ask", params),

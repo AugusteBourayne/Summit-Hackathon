@@ -85,6 +85,7 @@ export default function CloneProfile({
           <div className="border-t border-black/5 pt-4">
             <BehaviorProfile
               cloneId={cloneId}
+              name={name}
               isSelf={isSelf}
               initialSummary={clone.summary ?? ""}
               initialBehaviors={clone.behaviors ?? []}

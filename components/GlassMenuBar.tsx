@@ -45,7 +45,15 @@ export function GlassMenuBar({
   activeHref: string;
 }) {
   return (
-    <nav className="glass relative overflow-hidden rounded-2xl p-2 shadow-[0_1px_2px_rgba(15,15,20,0.04),0_8px_24px_-8px_rgba(15,15,20,0.12)]">
+    <nav
+      className="glass relative overflow-hidden rounded-2xl p-2 shadow-[0_1px_2px_rgba(15,15,20,0.04),0_8px_24px_-8px_rgba(15,15,20,0.12)]"
+      // Le flou est posé en inline : Tailwind v4 (Lightning CSS) supprime le
+      // backdrop-filter de la classe .glass à la compilation.
+      style={{
+        backdropFilter: "blur(40px) saturate(180%)",
+        WebkitBackdropFilter: "blur(40px) saturate(180%)",
+      }}
+    >
       <ul className="relative z-10 flex items-center gap-1">
         {items.map((item) => {
           const Icon = item.icon;

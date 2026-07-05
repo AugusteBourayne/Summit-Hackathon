@@ -2,16 +2,15 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FileText, MessageCircleQuestion, Mic, Play } from "lucide-react";
-import { api } from "@/lib/api";
+import { FileText, MessageCircleQuestion, Mic, Play, Trash2 } from "lucide-react";
+import { api, DocumentSummary } from "@/lib/api";
 import { useWorkspace } from "@/lib/workspace";
 import { useCurrentUser } from "@/lib/currentUser";
 import { useDisplayName } from "@/lib/profileOverrides";
 import { useRecorder, concatWavClipsBase64 } from "@/lib/useRecorder";
+import { addPendingBehaviors, getConfirmedBehaviorTexts, getPendingBehaviorTexts } from "@/lib/behaviorStorage";
 import { Avatar } from "@/components/Avatar";
 import questions from "@/seed/interview_questions.json";
-
-type UploadedDoc = { name: string; chunks: number };
 
 function ModuleHeader({
   icon: Icon,
@@ -55,9 +54,11 @@ export default function TrainingStudio({
   const recorder = useRecorder();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [docs, setDocs] = useState<UploadedDoc[]>([]);
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [docError, setDocError] = useState<string | null>(null);
+  const [deletingBatch, setDeletingBatch] = useState<string | null>(null);
   const [pasted, setPasted] = useState("");
+  const [pastedLabel, setPastedLabel] = useState("");
   const [dragOver, setDragOver] = useState(false);
 
   // Ce qui a déjà été ingéré lors d'une session précédente (le vrai stockage vit côté Vultr,
@@ -95,6 +96,34 @@ export default function TrainingStudio({
     };
   }, [cloneId]);
 
+  async function refreshDocuments() {
+    try {
+      const { documents } = await api.listDocuments(cloneId);
+      setDocuments(documents);
+    } catch {
+      /* pas grave si indisponible — la liste reste vide */
+    }
+  }
+
+  useEffect(() => {
+    refreshDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloneId]);
+
+  async function removeDocument(batchId: string) {
+    setDeletingBatch(batchId);
+    try {
+      await api.deleteDocument(cloneId, batchId);
+      await refreshDocuments();
+      const stats = await api.cloneStats(cloneId);
+      setSavedStats(stats);
+    } catch (err) {
+      setDocError(`Couldn't delete document (${err instanceof Error ? err.message : "unknown error"}).`);
+    } finally {
+      setDeletingBatch(null);
+    }
+  }
+
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
 
   if (cloneId !== currentUserId) {
@@ -115,18 +144,43 @@ export default function TrainingStudio({
     );
   }
 
-  async function ingestText(content: string, name: string) {
+  // Deduit les nouveaux traits de comportement apportes par ce contenu et les ajoute a la
+  // liste en attente (voir lib/behaviorStorage.ts) — la page profil les affichera comme
+  // suggestions a valider, sans jamais ecraser ce que l'utilisateur a deja confirme.
+  async function suggestBehaviors(content: string) {
+    try {
+      const existingBehaviors = [
+        ...getConfirmedBehaviorTexts(cloneId),
+        ...getPendingBehaviorTexts(cloneId),
+      ];
+      const { behaviors } = await api.deriveBehaviors(cloneId, {
+        name,
+        content,
+        existingBehaviors,
+      });
+      addPendingBehaviors(cloneId, behaviors);
+    } catch {
+      // Pas grave si la deduction echoue : le document est deja sauvegarde, et
+      // "Generate from documents" reste disponible en secours sur la page profil.
+    }
+  }
+
+  async function ingestText(content: string, label: string) {
     setDocError(null);
     try {
-      const { chunksAdded } = await api.ingest({
+      await api.ingest({
         scope: `personal:${cloneId}`,
         content,
         source: "upload",
+        label,
       });
-      setDocs((prev) => [...prev, { name, chunks: chunksAdded }]);
+      await refreshDocuments();
+      const stats = await api.cloneStats(cloneId);
+      setSavedStats(stats);
+      await suggestBehaviors(content);
     } catch (err) {
       setDocError(
-        `Couldn't save "${name}" (${err instanceof Error ? err.message : "unknown error"}). Try again.`
+        `Couldn't save "${label}" (${err instanceof Error ? err.message : "unknown error"}). Try again.`
       );
     }
   }
@@ -151,11 +205,17 @@ export default function TrainingStudio({
 
   async function submitAnswer(text: string) {
     if (!text.trim()) return;
+    const content = `Q: ${questions[step]}\nA: ${text}`;
     await api.ingest({
       scope: `personal:${cloneId}`,
-      content: `Q: ${questions[step]}\nA: ${text}`,
+      content,
       source: "interview",
+      label: questions[step],
     });
+    await refreshDocuments();
+    const stats = await api.cloneStats(cloneId);
+    setSavedStats(stats);
+    await suggestBehaviors(content);
     setAnswer("");
     setAnsweredCount((count) => count + 1);
     if (step + 1 >= questions.length) {
@@ -245,8 +305,8 @@ export default function TrainingStudio({
           tint="violet"
           title="Documents"
           status={
-            docs.length > 0
-              ? `${docs.length} added this session`
+            documents.length > 0
+              ? `${documents.length} document${documents.length > 1 ? "s" : ""}`
               : savedStats && savedStats.docChunks > 0
                 ? `${savedStats.docChunks} chunks saved`
                 : "Not started"
@@ -286,28 +346,49 @@ export default function TrainingStudio({
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
         />
-        <button
-          onClick={async () => {
-            if (!pasted.trim()) return;
-            await ingestText(pasted, "pasted text");
-            setPasted("");
-          }}
-          disabled={!pasted.trim()}
-          className="mt-2 rounded-full bg-black/10 px-4 py-2 text-sm hover:bg-black/15 disabled:opacity-40"
-        >
-          Add to knowledge
-        </button>
+        <div className="mt-2 flex gap-2">
+          <input
+            className="flex-1 rounded-full border border-black/10 bg-surface-2 px-4 py-2 text-sm outline-none placeholder:text-muted focus:border-accent/50"
+            placeholder="Label this document (optional, e.g. Q3 planning call)"
+            value={pastedLabel}
+            onChange={(e) => setPastedLabel(e.target.value)}
+          />
+          <button
+            onClick={async () => {
+              if (!pasted.trim()) return;
+              await ingestText(pasted, pastedLabel.trim() || "Pasted text");
+              setPasted("");
+              setPastedLabel("");
+            }}
+            disabled={!pasted.trim()}
+            className="shrink-0 rounded-full bg-black/10 px-4 py-2 text-sm hover:bg-black/15 disabled:opacity-40"
+          >
+            Add to knowledge
+          </button>
+        </div>
 
         {docError && (
           <p className="mt-2 rounded-lg bg-red-500/10 p-2.5 text-xs text-red-600">{docError}</p>
         )}
 
-        {docs.length > 0 && (
+        {documents.length > 0 && (
           <ul className="mt-4 space-y-1.5 border-t border-black/5 pt-4 text-sm">
-            {docs.map((doc, i) => (
-              <li key={i} className="flex justify-between text-muted">
-                <span>📄 {doc.name}</span>
-                <span className="font-mono text-xs">{doc.chunks} chunks indexed</span>
+            {documents.map((doc) => (
+              <li key={doc.batchId} className="group flex items-center justify-between text-muted">
+                <span>
+                  {doc.source === "interview" ? "🎤" : "📄"} {doc.label}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="font-mono text-xs">{doc.chunkCount} chunk{doc.chunkCount > 1 ? "s" : ""}</span>
+                  <button
+                    onClick={() => removeDocument(doc.batchId)}
+                    disabled={deletingBatch === doc.batchId}
+                    title="Delete this document"
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-muted opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100 disabled:opacity-40"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </span>
               </li>
             ))}
           </ul>

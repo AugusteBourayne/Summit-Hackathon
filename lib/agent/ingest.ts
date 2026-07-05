@@ -24,10 +24,13 @@ export function scopeToCollectionName(scope: string): string {
   return `f2f_p_${shortHash}`;
 }
 
-// Decoupe un texte en morceaux d'environ 500 tokens avec un chevauchement.
-// Approximation simple : 1 token ~ 4 caracteres, donc 500 tokens ~ 2000 caracteres.
-// Le chevauchement evite de couper une idee en deux entre deux chunks.
-function chunkText(text: string, chunkChars = 2000, overlapChars = 200): string[] {
+// Decoupe un texte en morceaux avec un chevauchement.
+// L'approximation "1 token ~ 4 caracteres" s'est averee trop optimiste sur des
+// transcriptions en francais (ponctuation/accents alourdissent le ratio token/caractere) :
+// des chunks de 2000 caracteres depassaient systematiquement la limite de tokens de Vultr
+// (422 "Maximum sequence length exceeded"), pas seulement de facon transitoire.
+// On vise donc une marge large : 700 caracteres.
+function chunkText(text: string, chunkChars = 700, overlapChars = 80): string[] {
   const chunks: string[] = [];
   let start = 0;
   while (start < text.length) {
@@ -117,9 +120,14 @@ async function addItem(collectionId: string, content: string, description: strin
 export async function ingest(
   scope: string,
   content: string,
-  source: "upload" | "interview"
+  source: "upload" | "interview",
+  label?: string
 ): Promise<number> {
   const chunks = chunkText(content);
+  // batchId regroupe tous les chunks issus d'un meme document/reponse pour pouvoir
+  // les lister et les supprimer ensemble depuis le Training Studio.
+  const batchId = crypto.randomUUID();
+  const encodedLabel = encodeURIComponent(label?.trim() || (source === "interview" ? "Interview answer" : "Untitled document"));
 
   // Mode demo / hors-ligne : sans VULTR_API_KEY configuree, on n'appelle pas le vector store
   // (sinon la route renvoie un 500 et le Training Studio est inutilisable). On "accepte" quand
@@ -134,24 +142,33 @@ export async function ingest(
 
   const collectionId = await ensureCollection(scope);
 
-  // On envoie les chunks un par un. La description encode la source, utile pour le debug et le retrieval.
-  // Un essai puis un retry apres une courte pause : on a constate en pratique des echecs Vultr
-  // ponctuels (ex. "Maximum sequence length exceeded") qui reussissent au second essai avec le
-  // meme contenu — donc probablement transitoire cote Vultr plutot qu'un vrai rejet du contenu.
-  for (let i = 0; i < chunks.length; i++) {
-    const description = `source:${source} scope:${scope} chunk:${i}`;
+  // Envoie un morceau, et si Vultr le rejette pour depassement de tokens, le decoupe en deux
+  // et reessaie chaque moitie recursivement plutot que de renvoyer le meme contenu identique
+  // (qui echouerait exactement pareil). Les vrais echecs transitoires beneficient d'une pause.
+  async function sendChunk(text: string, index: number, depth = 0): Promise<void> {
+    const description = `source:${source}|scope:${scope}|batch:${batchId}|label:${encodedLabel}|chunk:${index}`;
     try {
-      await addItem(collectionId, chunks[i], description);
+      await addItem(collectionId, text, description);
     } catch (err) {
-      console.warn(
-        `[ingest] echec chunk ${i}, nouvel essai dans 1s:`,
-        err instanceof Error ? err.message : err
-      );
+      const message = err instanceof Error ? err.message : String(err);
+      const isTooLong = message.includes("Maximum sequence length exceeded");
+      if (isTooLong && depth < 4 && text.length > 100) {
+        console.warn(`[ingest] chunk ${index} trop long, decoupe en deux (profondeur ${depth}):`, message);
+        const mid = Math.floor(text.length / 2);
+        await sendChunk(text.slice(0, mid), index, depth + 1);
+        await sendChunk(text.slice(mid), index, depth + 1);
+        return;
+      }
+      console.warn(`[ingest] echec chunk ${index}, nouvel essai dans 1s:`, message);
       await new Promise((resolve) => setTimeout(resolve, 1000));
       // Si ce deuxieme essai echoue aussi, on laisse l'erreur remonter : mieux vaut un vrai
       // message d'erreur cote interface qu'un faux succes qui cache une perte de donnees.
-      await addItem(collectionId, chunks[i], description);
+      await addItem(collectionId, text, description);
     }
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    await sendChunk(chunks[i], i);
   }
 
   return chunks.length;
