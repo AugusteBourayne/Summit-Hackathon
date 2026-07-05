@@ -54,8 +54,15 @@ async function del<T>(path: string): Promise<T> {
 }
 
 export const api = {
-  ingest: (params: { scope: string; content: string; source: "upload" | "interview"; label?: string }) =>
-    post<{ chunksAdded: number }>("/api/ingest", params),
+  ingest: (params: {
+    scope: string;
+    content: string;
+    source: "upload" | "interview";
+    label?: string;
+    imageDataUrl?: string;
+    fileDataUrl?: string;
+    fileType?: "pdf" | "docx";
+  }) => post<{ chunksAdded: number }>("/api/ingest", params),
 
   listDocuments: (cloneId: string) =>
     get<{ documents: DocumentSummary[] }>(`/api/clones/${cloneId}/documents`),

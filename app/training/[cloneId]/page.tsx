@@ -10,6 +10,7 @@ import { useDisplayName } from "@/lib/profileOverrides";
 import { useRecorder, concatWavClipsBase64 } from "@/lib/useRecorder";
 import { addPendingBehaviors, getConfirmedBehaviorTexts, getPendingBehaviorTexts } from "@/lib/behaviorStorage";
 import { Avatar } from "@/components/Avatar";
+import { ProfileTabs } from "@/components/ProfileTabs";
 import questions from "@/seed/interview_questions.json";
 
 function ModuleHeader({
@@ -282,9 +283,7 @@ export default function TrainingStudio({
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
-      <Link href={`/clone/${cloneId}`} className="text-sm text-muted hover:text-foreground">
-        ← Back to profile
-      </Link>
+      <ProfileTabs cloneId={cloneId} />
 
       <div className="mt-6 flex items-center gap-4">
         <Avatar id={cloneId} name={name} size="lg" />

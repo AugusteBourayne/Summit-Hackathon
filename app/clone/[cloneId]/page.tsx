@@ -8,6 +8,7 @@ import { useCurrentUser } from "@/lib/currentUser";
 import { useDisplayName } from "@/lib/profileOverrides";
 import { SlackHint } from "@/components/Slack";
 import { BehaviorProfile } from "@/components/BehaviorProfile";
+import { ProfileTabs } from "@/components/ProfileTabs";
 import { ProfileHeader } from "@/components/ProfileHeader";
 
 export default function CloneProfile({
@@ -27,6 +28,8 @@ export default function CloneProfile({
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
+      {isSelf && <ProfileTabs cloneId={cloneId} />}
+
       <ProfileHeader
         cloneId={cloneId}
         clone={clone}
