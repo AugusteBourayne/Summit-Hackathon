@@ -134,7 +134,24 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const custom = Object.values(overrides)
       .filter((w) => w.custom)
       .sort((a, b) => a.id.localeCompare(b.id));
-    return [overrides[DEMO_WORKSPACE_ID] ?? demoWorkspace, ...custom];
+
+    const demoOverride = overrides[DEMO_WORKSPACE_ID];
+    let demo = demoWorkspace;
+    if (demoOverride) {
+      // Des qu'un membre est ajoute/supprime, tout le workspace demo est fige en localStorage
+      // (voir addMember/removeMember) — sans ce merge, les clones d'origine du seed restent
+      // bloques sur l'etat capture ce jour-la (voix, comportements, trained...), meme apres
+      // que /api/clones/* ait ecrit de vraies mises a jour dans seed/clones.json. Seuls les
+      // clones de membres reellement ajoutes par l'utilisateur (absents du seed d'origine)
+      // doivent venir de l'override ; les clones d'origine restent toujours pilotes par le
+      // seed, source de verite pour eux.
+      const mergedClones: Record<string, Clone> = { ...demoOverride.clones };
+      for (const id of Object.keys(demoWorkspace.clones)) {
+        if (mergedClones[id]) mergedClones[id] = demoWorkspace.clones[id];
+      }
+      demo = { ...demoOverride, clones: mergedClones };
+    }
+    return [demo, ...custom];
   }, [overrides]);
 
   const active = useMemo(
