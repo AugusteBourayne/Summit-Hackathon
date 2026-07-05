@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { api, Behavior, CloneProfile } from "@/lib/api";
+import { clearPendingBehaviors, getPendingBehaviorTexts } from "@/lib/behaviorStorage";
 
 function storageKey(cloneId: string) {
   return `f2f-behaviors-${cloneId}`;
@@ -10,11 +11,13 @@ function storageKey(cloneId: string) {
 
 export function BehaviorProfile({
   cloneId,
+  name,
   isSelf,
   initialSummary,
   initialBehaviors,
 }: {
   cloneId: string;
+  name: string;
   isSelf: boolean;
   initialSummary: string;
   initialBehaviors: Behavior[];
@@ -27,20 +30,43 @@ export function BehaviorProfile({
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   // Overlay des éventuelles modifications déjà enregistrées localement (démo : persiste au
-  // rechargement sans attendre la persistance serveur de Géraud).
+  // rechargement sans attendre la persistance serveur de Géraud). On superpose ensuite les
+  // traits déduits automatiquement depuis le Training Studio (pas encore confirmés) : ils
+  // s'ajoutent à la liste et marquent le profil "non enregistré" pour forcer une relecture
+  // avant sauvegarde — jamais d'écrasement silencieux d'un profil déjà validé.
   useEffect(() => {
+    let loadedSummary = initialSummary;
+    let loadedBehaviors = initialBehaviors;
     try {
       const raw = window.localStorage.getItem(storageKey(cloneId));
       if (raw) {
         const parsed = JSON.parse(raw) as CloneProfile;
-        setSummary(parsed.summary);
-        setBehaviors(parsed.behaviors);
+        loadedSummary = parsed.summary;
+        loadedBehaviors = parsed.behaviors;
       }
     } catch {
       /* ignore */
     }
+
+    const pendingTexts = getPendingBehaviorTexts(cloneId);
+    const existingTexts = new Set(loadedBehaviors.map((b) => b.text));
+    const newSuggestions = pendingTexts.filter((text) => !existingTexts.has(text));
+
+    setSummary(loadedSummary);
+    if (newSuggestions.length > 0) {
+      setBehaviors([
+        ...loadedBehaviors,
+        ...newSuggestions.map((text, i) => ({ id: `b-suggested-${Date.now()}-${i}`, text })),
+      ]);
+      markDirty();
+    } else {
+      setBehaviors(loadedBehaviors);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloneId]);
 
   function markDirty() {
@@ -84,16 +110,33 @@ export function BehaviorProfile({
     try {
       await api.saveBehaviors(cloneId, profile);
       window.localStorage.setItem(storageKey(cloneId), JSON.stringify(profile));
+      clearPendingBehaviors(cloneId);
       setDirty(false);
       setSaved(true);
     } catch {
       // La persistance serveur (Géraud) n'est pas encore branchée : on garde au moins la
       // version locale pour la démo.
       window.localStorage.setItem(storageKey(cloneId), JSON.stringify(profile));
+      clearPendingBehaviors(cloneId);
       setDirty(false);
       setSaved(true);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function generate() {
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const result = await api.generateProfile(cloneId, name);
+      setSummary(result.summary);
+      setBehaviors(result.behaviors.map((text, i) => ({ id: `b-gen-${Date.now()}-${i}`, text })));
+      markDirty();
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Couldn't generate the profile.");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -103,7 +146,21 @@ export function BehaviorProfile({
     <div className="space-y-4 text-sm">
       {/* Résumé lisible */}
       <div>
-        <h3 className="font-medium">Behavioral profile</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">Behavioral profile</h3>
+          {isSelf && (
+            <button
+              onClick={generate}
+              disabled={generating}
+              title="Regenerate summary and behaviors from ingested documents — review before saving"
+              className="flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1 text-xs hover:bg-black/[0.03] disabled:opacity-40"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {generating ? "Generating..." : "Generate from documents"}
+            </button>
+          )}
+        </div>
+        {generateError && <p className="mt-2 text-xs text-red-600">{generateError}</p>}
         {isSelf ? (
           <textarea
             className="mt-2 w-full rounded-xl border border-black/10 bg-surface-2 p-3 text-sm outline-none focus:border-accent/50"

@@ -136,7 +136,6 @@ export function ProfileHeader({
           {clone.voiceId && <Badge variant="voice">voice ready</Badge>}
         </div>
       </div>
-
     </div>
   );
 }

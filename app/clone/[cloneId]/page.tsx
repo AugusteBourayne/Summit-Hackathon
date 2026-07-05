@@ -3,8 +3,9 @@
 import { use } from "react";
 import Link from "next/link";
 import { MessageSquare } from "lucide-react";
-import { getClone, team } from "@/lib/team";
+import { useWorkspace } from "@/lib/workspace";
 import { useCurrentUser } from "@/lib/currentUser";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { SlackHint } from "@/components/Slack";
 import { BehaviorProfile } from "@/components/BehaviorProfile";
 import { ProfileTabs } from "@/components/ProfileTabs";
@@ -16,12 +17,14 @@ export default function CloneProfile({
   params: Promise<{ cloneId: string }>;
 }) {
   const { cloneId } = use(params);
+  const { getClone, company } = useWorkspace();
   const clone = getClone(cloneId);
+  const name = useDisplayName(cloneId, clone?.name ?? "");
   const { currentUserId } = useCurrentUser();
   const isSelf = cloneId === currentUserId;
 
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
-  const firstName = clone.name.split(" ")[0];
+  const firstName = name.split(" ")[0];
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
@@ -31,7 +34,7 @@ export default function CloneProfile({
         cloneId={cloneId}
         clone={clone}
         isSelf={isSelf}
-        companyName={team.company.name}
+        companyName={company.name}
       />
 
       <section className="mt-10">
@@ -50,7 +53,7 @@ export default function CloneProfile({
               One conversation — talk by voice or type, and drop a document to get their reaction on it.
             </p>
             <div className="mt-4">
-              <SlackHint name={clone.name} />
+              <SlackHint name={name} />
             </div>
           </>
         ) : (
@@ -66,7 +69,7 @@ export default function CloneProfile({
         )}
         {!clone.trained && !isSelf && (
           <p className="mt-3 text-sm text-muted">
-            This clone hasn&apos;t been trained yet. Only {clone.name.split(" ")[0]} can train it.
+            This clone hasn&apos;t been trained yet. Only {firstName} can train it.
           </p>
         )}
       </section>
@@ -79,12 +82,13 @@ export default function CloneProfile({
           <div>
             <h3 className="font-medium">Company context (shared)</h3>
             <p className="mt-1 text-muted">
-              {team.company.name} — {team.company.description}
+              {company.name} — {company.description}
             </p>
           </div>
           <div className="border-t border-black/5 pt-4">
             <BehaviorProfile
               cloneId={cloneId}
+              name={name}
               isSelf={isSelf}
               initialSummary={clone.summary ?? ""}
               initialBehaviors={clone.behaviors ?? []}
@@ -94,7 +98,7 @@ export default function CloneProfile({
       </section>
 
       <p className="mt-10 text-xs text-muted">
-        This clone was created with {clone.name}&apos;s explicit consent. It rehearses
+        This clone was created with {name}&apos;s explicit consent. It rehearses
         conversations — it never replaces the real person&apos;s decisions.
       </p>
     </main>

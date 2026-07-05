@@ -1,15 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Sparkles, Building2 } from "lucide-react";
+import { Users, Sparkles, Building2, Settings } from "lucide-react";
 import { useCurrentUser } from "@/lib/currentUser";
+import { useWorkspace } from "@/lib/workspace";
 import { UserSwitcher } from "@/components/UserSwitcher";
 import { GlassMenuBar } from "@/components/GlassMenuBar";
 
 export function TopNav() {
   const pathname = usePathname();
-  const { currentUserId } = useCurrentUser();
+  const { currentUserId, setCurrentUserId } = useCurrentUser();
+  const { members } = useWorkspace();
+
+  // Réconciliation : si l'utilisateur courant n'appartient pas à la société active
+  // (ex. après un changement de workspace), on bascule sur le premier membre valide.
+  useEffect(() => {
+    if (members.length === 0) return;
+    if (!members.some((m) => m.id === currentUserId)) {
+      setCurrentUserId(members[0].id);
+    }
+  }, [members, currentUserId, setCurrentUserId]);
 
   const links = [
     {
@@ -32,6 +44,13 @@ export function TopNav() {
       icon: Building2,
       iconColor: "text-cyan-600",
       glow: "radial-gradient(circle, rgba(6,182,212,0.22) 0%, rgba(6,182,212,0.08) 50%, transparent 100%)",
+    },
+    {
+      href: "/settings",
+      label: "Settings",
+      icon: Settings,
+      iconColor: "text-amber-600",
+      glow: "radial-gradient(circle, rgba(245,158,11,0.22) 0%, rgba(245,158,11,0.08) 50%, transparent 100%)",
     },
   ];
 

@@ -40,12 +40,13 @@ body {
   min-height: 100%;
 }
 
-/* Verre dépoli */
+/* Verre dépoli — fond translucide pour laisser voir le flou derrière.
+   ⚠️ Le backdrop-filter n'est PAS déclaré ici : Tailwind v4 (Lightning CSS) le
+   supprime silencieusement des règles CSS custom. Il est donc posé en style inline
+   sur les éléments concernés (GlassMenuBar, UserSwitcher). */
 .glass {
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.6);
   border: 1px solid var(--border);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
 }
 
 .card {

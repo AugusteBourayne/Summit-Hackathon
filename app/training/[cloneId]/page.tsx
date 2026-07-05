@@ -1,17 +1,17 @@
 "use client";
 
-import { use, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FileText, MessageCircleQuestion, Mic, Play } from "lucide-react";
-import { api } from "@/lib/api";
-import { getClone } from "@/lib/team";
+import { FileText, MessageCircleQuestion, Mic, Play, Trash2 } from "lucide-react";
+import { api, DocumentSummary } from "@/lib/api";
+import { useWorkspace } from "@/lib/workspace";
 import { useCurrentUser } from "@/lib/currentUser";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { useRecorder, concatWavClipsBase64 } from "@/lib/useRecorder";
+import { addPendingBehaviors, getConfirmedBehaviorTexts, getPendingBehaviorTexts } from "@/lib/behaviorStorage";
 import { Avatar } from "@/components/Avatar";
 import { ProfileTabs } from "@/components/ProfileTabs";
 import questions from "@/seed/interview_questions.json";
-
-type UploadedDoc = { name: string; chunks: number };
 
 function ModuleHeader({
   icon: Icon,
@@ -48,14 +48,23 @@ export default function TrainingStudio({
   params: Promise<{ cloneId: string }>;
 }) {
   const { cloneId } = use(params);
+  const { getClone } = useWorkspace();
   const clone = getClone(cloneId);
+  const name = useDisplayName(cloneId, clone?.name ?? "");
   const { currentUserId } = useCurrentUser();
   const recorder = useRecorder();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [docs, setDocs] = useState<UploadedDoc[]>([]);
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [docError, setDocError] = useState<string | null>(null);
+  const [deletingBatch, setDeletingBatch] = useState<string | null>(null);
   const [pasted, setPasted] = useState("");
+  const [pastedLabel, setPastedLabel] = useState("");
   const [dragOver, setDragOver] = useState(false);
+
+  // Ce qui a déjà été ingéré lors d'une session précédente (le vrai stockage vit côté Vultr,
+  // pas dans cet état local qui repart à zéro à chaque montage du composant).
+  const [savedStats, setSavedStats] = useState<{ docChunks: number; interviewChunks: number } | null>(null);
 
   const [sessionStarted, setSessionStarted] = useState(false);
   const [step, setStep] = useState(0);
@@ -70,6 +79,52 @@ export default function TrainingStudio({
   // réel au clonage de voix (au lieu du texte factice qui était envoyé jusqu'ici).
   const [answerAudios, setAnswerAudios] = useState<string[]>([]);
 
+  // Recharge la progression déjà enregistrée à l'ouverture de la page — sans ça, "Documents"
+  // et "AI interview" affichent "Not started" après un simple rechargement, même si du contenu
+  // a bien été ingéré par le passé (le vrai stockage est côté Vultr, pas dans l'état React).
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .cloneStats(cloneId)
+      .then((stats) => {
+        if (!cancelled) setSavedStats(stats);
+      })
+      .catch(() => {
+        /* pas grave si indisponible — l'UI retombe sur "Not started" */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cloneId]);
+
+  async function refreshDocuments() {
+    try {
+      const { documents } = await api.listDocuments(cloneId);
+      setDocuments(documents);
+    } catch {
+      /* pas grave si indisponible — la liste reste vide */
+    }
+  }
+
+  useEffect(() => {
+    refreshDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloneId]);
+
+  async function removeDocument(batchId: string) {
+    setDeletingBatch(batchId);
+    try {
+      await api.deleteDocument(cloneId, batchId);
+      await refreshDocuments();
+      const stats = await api.cloneStats(cloneId);
+      setSavedStats(stats);
+    } catch (err) {
+      setDocError(`Couldn't delete document (${err instanceof Error ? err.message : "unknown error"}).`);
+    } finally {
+      setDeletingBatch(null);
+    }
+  }
+
   if (!clone) return <main className="p-12 text-muted">Clone not found.</main>;
 
   if (cloneId !== currentUserId) {
@@ -78,7 +133,7 @@ export default function TrainingStudio({
         <p className="text-4xl">🔒</p>
         <h1 className="mt-4 text-lg font-semibold">You can only train your own clone</h1>
         <p className="mt-2 text-sm text-muted">
-          {`${clone.name} needs to sign in themselves to train their clone — that's what keeps every profile consensual and accurate.`}
+          {`${name} needs to sign in themselves to train their clone — that's what keeps every profile consensual and accurate.`}
         </p>
         <Link
           href={`/training/${currentUserId}`}
@@ -90,19 +145,55 @@ export default function TrainingStudio({
     );
   }
 
-  async function ingestText(content: string, name: string) {
-    const { chunksAdded } = await api.ingest({
-      scope: `personal:${cloneId}`,
-      content,
-      source: "upload",
-    });
-    setDocs((prev) => [...prev, { name, chunks: chunksAdded }]);
+  // Deduit les nouveaux traits de comportement apportes par ce contenu et les ajoute a la
+  // liste en attente (voir lib/behaviorStorage.ts) — la page profil les affichera comme
+  // suggestions a valider, sans jamais ecraser ce que l'utilisateur a deja confirme.
+  async function suggestBehaviors(content: string) {
+    try {
+      const existingBehaviors = [
+        ...getConfirmedBehaviorTexts(cloneId),
+        ...getPendingBehaviorTexts(cloneId),
+      ];
+      const { behaviors } = await api.deriveBehaviors(cloneId, {
+        name,
+        content,
+        existingBehaviors,
+      });
+      addPendingBehaviors(cloneId, behaviors);
+    } catch {
+      // Pas grave si la deduction echoue : le document est deja sauvegarde, et
+      // "Generate from documents" reste disponible en secours sur la page profil.
+    }
+  }
+
+  async function ingestText(content: string, label: string) {
+    setDocError(null);
+    try {
+      await api.ingest({
+        scope: `personal:${cloneId}`,
+        content,
+        source: "upload",
+        label,
+      });
+      await refreshDocuments();
+      const stats = await api.cloneStats(cloneId);
+      setSavedStats(stats);
+      await suggestBehaviors(content);
+    } catch (err) {
+      setDocError(
+        `Couldn't save "${label}" (${err instanceof Error ? err.message : "unknown error"}). Try again.`
+      );
+    }
   }
 
   async function ingestFiles(files: FileList | File[]) {
     for (const file of Array.from(files)) {
-      if (!/\.(txt|md)$/i.test(file.name)) continue;
-      const content = await file.text();
+      // PDF/Word/Excel/PowerPoint/images sont parsés côté agent — ici on ingère le texte
+      // directement quand on le peut, sinon on transmet une référence au fichier.
+      const isPlainText = /\.(txt|md|csv)$/i.test(file.name);
+      const content = isPlainText
+        ? await file.text()
+        : `[document: ${file.name}, ${(file.size / 1024).toFixed(0)} KB — to be parsed by the agent]`;
       await ingestText(content, file.name);
     }
   }
@@ -115,11 +206,17 @@ export default function TrainingStudio({
 
   async function submitAnswer(text: string) {
     if (!text.trim()) return;
+    const content = `Q: ${questions[step]}\nA: ${text}`;
     await api.ingest({
       scope: `personal:${cloneId}`,
-      content: `Q: ${questions[step]}\nA: ${text}`,
+      content,
       source: "interview",
+      label: questions[step],
     });
+    await refreshDocuments();
+    const stats = await api.cloneStats(cloneId);
+    setSavedStats(stats);
+    await suggestBehaviors(content);
     setAnswer("");
     setAnsweredCount((count) => count + 1);
     if (step + 1 >= questions.length) {
@@ -189,10 +286,10 @@ export default function TrainingStudio({
       <ProfileTabs cloneId={cloneId} />
 
       <div className="mt-6 flex items-center gap-4">
-        <Avatar id={cloneId} name={clone.name} size="lg" />
+        <Avatar id={cloneId} name={name} size="lg" />
         <div>
           <h1 className="text-2xl font-semibold">Training studio</h1>
-          <p className="text-muted">Building {clone.name}&apos;s clone</p>
+          <p className="text-muted">Building {name}&apos;s clone</p>
         </div>
       </div>
 
@@ -206,18 +303,24 @@ export default function TrainingStudio({
           icon={FileText}
           tint="violet"
           title="Documents"
-          status={docs.length > 0 ? `${docs.length} added` : "Not started"}
+          status={
+            documents.length > 0
+              ? `${documents.length} document${documents.length > 1 ? "s" : ""}`
+              : savedStats && savedStats.docChunks > 0
+                ? `${savedStats.docChunks} chunks saved`
+                : "Not started"
+          }
         />
         <p className="mt-3 text-sm text-muted">
           Meeting transcripts, decision logs, written feedback — anything that shows how{" "}
-          {clone.name.split(" ")[0]} reacts and decides. Drop as many as you want.
+          {name.split(" ")[0]} reacts and decides. Drop as many as you want.
         </p>
 
         <input
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".txt,.md"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp,.heic"
           hidden
           onChange={(e) => e.target.files && ingestFiles(e.target.files)}
         />
@@ -233,7 +336,7 @@ export default function TrainingStudio({
             dragOver ? "border-accent bg-accent-soft" : "border-black/10 text-muted hover:border-black/20"
           }`}
         >
-          Drop .txt / .md files, or click to browse
+          Drop PDF, Word, Excel, PowerPoint, images, or text files — or click to browse
         </button>
 
         <textarea
@@ -242,24 +345,49 @@ export default function TrainingStudio({
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
         />
-        <button
-          onClick={async () => {
-            if (!pasted.trim()) return;
-            await ingestText(pasted, "pasted text");
-            setPasted("");
-          }}
-          disabled={!pasted.trim()}
-          className="mt-2 rounded-full bg-black/10 px-4 py-2 text-sm hover:bg-black/15 disabled:opacity-40"
-        >
-          Add to knowledge
-        </button>
+        <div className="mt-2 flex gap-2">
+          <input
+            className="flex-1 rounded-full border border-black/10 bg-surface-2 px-4 py-2 text-sm outline-none placeholder:text-muted focus:border-accent/50"
+            placeholder="Label this document (optional, e.g. Q3 planning call)"
+            value={pastedLabel}
+            onChange={(e) => setPastedLabel(e.target.value)}
+          />
+          <button
+            onClick={async () => {
+              if (!pasted.trim()) return;
+              await ingestText(pasted, pastedLabel.trim() || "Pasted text");
+              setPasted("");
+              setPastedLabel("");
+            }}
+            disabled={!pasted.trim()}
+            className="shrink-0 rounded-full bg-black/10 px-4 py-2 text-sm hover:bg-black/15 disabled:opacity-40"
+          >
+            Add to knowledge
+          </button>
+        </div>
 
-        {docs.length > 0 && (
+        {docError && (
+          <p className="mt-2 rounded-lg bg-red-500/10 p-2.5 text-xs text-red-600">{docError}</p>
+        )}
+
+        {documents.length > 0 && (
           <ul className="mt-4 space-y-1.5 border-t border-black/5 pt-4 text-sm">
-            {docs.map((doc, i) => (
-              <li key={i} className="flex justify-between text-muted">
-                <span>📄 {doc.name}</span>
-                <span className="font-mono text-xs">{doc.chunks} chunks indexed</span>
+            {documents.map((doc) => (
+              <li key={doc.batchId} className="group flex items-center justify-between text-muted">
+                <span>
+                  {doc.source === "interview" ? "🎤" : "📄"} {doc.label}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="font-mono text-xs">{doc.chunkCount} chunk{doc.chunkCount > 1 ? "s" : ""}</span>
+                  <button
+                    onClick={() => removeDocument(doc.batchId)}
+                    disabled={deletingBatch === doc.batchId}
+                    title="Delete this document"
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-muted opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100 disabled:opacity-40"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
@@ -272,7 +400,15 @@ export default function TrainingStudio({
           icon={MessageCircleQuestion}
           tint="pink"
           title="AI interview"
-          status={interviewDone ? "Done" : sessionStarted ? `${answeredCount}/${questions.length}` : "Not started"}
+          status={
+            interviewDone
+              ? "Done"
+              : sessionStarted
+                ? `${answeredCount}/${questions.length}`
+                : savedStats && savedStats.interviewChunks > 0
+                  ? `${savedStats.interviewChunks} answers saved`
+                  : "Not started"
+          }
         />
         <p className="mt-3 text-sm text-muted">
           The AI asks targeted questions to learn how you react. Answer by voice or keyboard —

@@ -7,6 +7,7 @@ interface IngestBody {
   scope: "team" | `personal:${string}`;
   content: string;
   source: "upload" | "interview";
+  label?: string;
   imageDataUrl?: string;
   fileDataUrl?: string;
   fileType?: "pdf" | "docx";
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Appel a la logique metier. Vultr chunk, embed et stocke ; on recupere le compte.
-    const chunksAdded = await ingest(body.scope, contentToIngest, body.source);
+    const chunksAdded = await ingest(body.scope, contentToIngest, body.source, body.label);
 
     // Reponse au format exact du contrat : { chunksAdded: number }.
     return NextResponse.json({ chunksAdded });

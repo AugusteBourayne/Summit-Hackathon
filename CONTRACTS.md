@@ -96,6 +96,32 @@ profil, changer son **nom** et **uploader une photo**.
 localStorage pour la démo. À faire : persister `name`/`avatar` (l'avatar arrive en data URL,
 à stocker ou pousser vers un bucket puis ne garder que l'URL).
 
+### Sociétés / workspaces — `POST /api/companies` (à créer)
+L'app gère plusieurs **sociétés** (workspaces). La société de démo (Flowbridge) vient du seed ;
+l'utilisateur peut en **créer de nouvelles, vierges**, via l'assistant guidé dans `/settings`.
+Chaque société a son contexte (nom, description, produit), ses membres et un clone vierge par
+membre. La société active pilote tout l'affichage (accueil, sélecteur de profil, profils, etc.).
+```ts
+type Company = { name: string; description: string; product: string };
+// Request
+{
+  company: Company,
+  members: { name: string; role: string }[]   // avatar uploadé séparément via /api/clones/:id/profile
+}
+// Response
+{
+  id: string,
+  company: Company,
+  members: { id: string; name: string; role: string; consent: boolean }[],
+  clones: Record<string /* cloneId */, { name; role; voiceId: null; personaProfile: ""; trained: false; summary: ""; behaviors: [] }>
+}
+```
+**TODO(backend)** — **entièrement mocké côté client pour l'instant** : les sociétés créées sont
+persistées en `localStorage` (`f2f-workspaces` + `f2f-active-workspace`), voir `/lib/workspace.tsx`.
+À brancher : persister la société + ses membres + les clones vierges, et scoper le store vectoriel
+(Vultr) / la synthèse `/api/ask` par société active (chaque société a sa propre base de connaissances).
+Les avatars uploadés partent en data URL via `POST /api/clones/:cloneId/profile`.
+
 ## Fichiers de seed (`/seed`)
 
 - `team.json` — `{ company: { name, description, product }, members: [{ id, name, role, consent }] }`

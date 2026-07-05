@@ -1,25 +1,99 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { FileStack } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FileStack, UserPlus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
-import { team } from "@/lib/team";
+import { useWorkspace } from "@/lib/workspace";
+import { useCurrentUser } from "@/lib/currentUser";
+import { useDisplayName } from "@/lib/profileOverrides";
 import { Avatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { SlackLogo } from "@/components/Slack";
+
+function MemberRow({
+  member,
+  isSelf,
+  onRemove,
+}: {
+  member: { id: string; name: string; role: string };
+  isSelf: boolean;
+  onRemove: (id: string) => void;
+}) {
+  const name = useDisplayName(member.id, member.name);
+  const [confirming, setConfirming] = useState(false);
+
+  return (
+    <div className="flex items-center gap-4 p-4">
+      <Avatar id={member.id} name={name} size="sm" />
+      <div className="flex-1">
+        <p className="text-sm font-medium">{name}</p>
+        <p className="text-xs text-muted">{member.role}</p>
+      </div>
+      <Badge variant="consent">✓ consent given</Badge>
+      {!isSelf &&
+        (confirming ? (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => onRemove(member.id)}
+              className="rounded-full bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-500/20"
+            >
+              Confirm remove
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              className="rounded-full px-3 py-1.5 text-xs text-muted hover:bg-black/[0.04]"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirming(true)}
+            title="Remove teammate"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-600"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        ))}
+    </div>
+  );
+}
 
 type UploadedDoc = { name: string; chunks: number };
 
 const ACCEPTED = ".pdf,.xlsx,.xls,.pptx,.ppt,.doc,.docx,.txt,.md,.csv";
 
 export default function TeamSettings() {
-  const [name, setName] = useState(team.company.name);
-  const [description, setDescription] = useState(team.company.description);
-  const [product, setProduct] = useState(team.company.product);
+  const { company, members, addMember, removeMember } = useWorkspace();
+  const { currentUserId } = useCurrentUser();
+  const [name, setName] = useState(company.name);
+  const [description, setDescription] = useState(company.description);
+  const [product, setProduct] = useState(company.product);
   const [saved, setSaved] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [addingMember, setAddingMember] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState("");
+
+  function submitNewMember() {
+    if (!newMemberName.trim()) return;
+    addMember({ name: newMemberName, role: newMemberRole });
+    setNewMemberName("");
+    setNewMemberRole("");
+    setAddingMember(false);
+  }
+
+  // Resync des champs quand la société active change (ex. après switch de workspace,
+  // chargé depuis le localStorage après le premier rendu).
+  useEffect(() => {
+    setName(company.name);
+    setDescription(company.description);
+    setProduct(company.product);
+  }, [company.name, company.description, company.product]);
+
   const [docs, setDocs] = useState<UploadedDoc[]>([]);
+  const [docError, setDocError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [slackConnected, setSlackConnected] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +108,9 @@ export default function TeamSettings() {
         source: "upload",
       });
       setSaved(`Saved — ${chunksAdded} chunk(s) added to the shared knowledge base.`);
+    } catch (err) {
+      setSaved(null);
+      setDocError(`Couldn't save (${err instanceof Error ? err.message : "unknown error"}). Try again.`);
     } finally {
       setSaving(false);
     }
@@ -48,6 +125,7 @@ export default function TeamSettings() {
     });
   }
   async function ingestFiles(files: FileList | File[]) {
+    setDocError(null);
     for (const file of Array.from(files)) {
       const lower = file.name.toLowerCase();
       let params;
@@ -71,8 +149,14 @@ export default function TeamSettings() {
         };
       }
 
-      const { chunksAdded } = await api.ingest(params);
-      setDocs((prev) => [...prev, { name: file.name, chunks: chunksAdded }]);
+      try {
+        const { chunksAdded } = await api.ingest(params);
+        setDocs((prev) => [...prev, { name: file.name, chunks: chunksAdded }]);
+      } catch (err) {
+        setDocError(
+          `Couldn't save "${file.name}" (${err instanceof Error ? err.message : "unknown error"}). Try again.`
+        );
+      }
     }
   }
 
@@ -125,6 +209,10 @@ export default function TeamSettings() {
           Drop PDF, Excel, PowerPoint, Word, or text files — or click to browse
         </button>
 
+        {docError && (
+          <p className="mt-2 rounded-lg bg-red-500/10 p-2.5 text-xs text-red-600">{docError}</p>
+        )}
+
         {docs.length > 0 && (
           <ul className="mt-4 space-y-1.5 border-t border-black/5 pt-4 text-sm">
             {docs.map((doc, i) => (
@@ -174,6 +262,7 @@ export default function TeamSettings() {
             {saving ? "Saving..." : "Save to knowledge base"}
           </button>
           {saved && <p className="text-sm text-emerald-600">{saved}</p>}
+          {docError && <p className="text-sm text-red-600">{docError}</p>}
         </div>
       </div>
 
@@ -214,19 +303,68 @@ export default function TeamSettings() {
         )}
       </div>
 
-      <h2 className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted">
-        Members
-      </h2>
-      <div className="card mt-3 divide-y divide-black/5">
-        {team.members.map((member) => (
-          <div key={member.id} className="flex items-center gap-4 p-4">
-            <Avatar id={member.id} name={member.name} size="sm" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">{member.name}</p>
-              <p className="text-xs text-muted">{member.role}</p>
-            </div>
-            <Badge variant="consent">✓ consent given</Badge>
+      <div className="mt-10 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Members</h2>
+        <button
+          onClick={() => setAddingMember((v) => !v)}
+          className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20"
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+          Add teammate
+        </button>
+      </div>
+
+      {addingMember && (
+        <div className="card mt-3 space-y-3 p-4">
+          <div className="flex gap-3">
+            <input
+              autoFocus
+              placeholder="Full name"
+              className="flex-1 rounded-xl border border-black/10 bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent/50"
+              value={newMemberName}
+              onChange={(e) => setNewMemberName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitNewMember()}
+            />
+            <input
+              placeholder="Role (e.g. Sales Lead)"
+              className="flex-1 rounded-xl border border-black/10 bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent/50"
+              value={newMemberRole}
+              onChange={(e) => setNewMemberRole(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitNewMember()}
+            />
           </div>
+          <div className="flex gap-2">
+            <button
+              onClick={submitNewMember}
+              disabled={!newMemberName.trim()}
+              className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            >
+              Add to team
+            </button>
+            <button
+              onClick={() => setAddingMember(false)}
+              className="rounded-full px-4 py-2 text-sm text-muted hover:bg-black/[0.04]"
+            >
+              Cancel
+            </button>
+          </div>
+          <p className="text-xs text-muted">
+            Creates an untrained, blank clone — they&apos;ll need to sign in themselves to train it.
+          </p>
+        </div>
+      )}
+
+      <div className="card mt-3 divide-y divide-black/5">
+        {members.length === 0 && (
+          <div className="p-4 text-sm text-muted">No members yet.</div>
+        )}
+        {members.map((member) => (
+          <MemberRow
+            key={member.id}
+            member={member}
+            isSelf={member.id === currentUserId}
+            onRemove={removeMember}
+          />
         ))}
       </div>
     </main>
