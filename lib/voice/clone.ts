@@ -39,7 +39,9 @@ export async function cloneVoice(
   // (HTTP 201 + `uid` présent) : on ne considère l'appel en échec que si l'API a
   // répondu en erreur ou n'a pas renvoyé d'identifiant.
   if (!resp.ok || !json.uid) {
-    throw new Error(`Gradium voice clone error: ${json.error ?? resp.status}`);
+    // Gradium renvoie le detail de l'erreur dans `detail` (ex: limite de voix atteinte),
+    // pas dans `error` — sans ce fallback, l'interface n'affichait qu'un code HTTP muet.
+    throw new Error(`Gradium voice clone error: ${json.detail ?? json.error ?? resp.status}`);
   }
   return json.uid as string;
 }
